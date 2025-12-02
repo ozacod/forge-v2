@@ -18,7 +18,7 @@ const (
 )
 
 // Version is the cpx version
-const Version = "1.0.0"
+const Version = "1.0.2"
 
 // DefaultServer is the default server URL
 const DefaultServer = "https://cpxcpp.vercel.app"

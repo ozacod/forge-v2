@@ -24,7 +24,13 @@ func GetConfigDir() (string, error) {
 	// Use ~/.config/cpx on Unix, %APPDATA%/cpx on Windows
 	var configDir string
 	if runtime.GOOS == "windows" {
-		configDir = filepath.Join(os.Getenv("APPDATA"), "cpx")
+		appData := os.Getenv("APPDATA")
+		if appData == "" {
+			// Fallback to AppData\Roaming in user's home directory if APPDATA is not set
+			configDir = filepath.Join(homeDir, "AppData", "Roaming", "cpx")
+		} else {
+			configDir = filepath.Join(appData, "cpx")
+		}
 	} else {
 		configDir = filepath.Join(homeDir, ".config", "cpx")
 	}
@@ -42,15 +48,20 @@ func GetConfigPath() (string, error) {
 }
 
 // LoadGlobal loads the global cpx configuration
+// If the config file doesn't exist, it will be created with default values
 func LoadGlobal() (*GlobalConfig, error) {
 	configPath, err := GetConfigPath()
 	if err != nil {
 		return nil, err
 	}
 
-	// If config doesn't exist, return default
+	// If config doesn't exist, create it with default values
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return &GlobalConfig{}, nil
+		defaultConfig := &GlobalConfig{}
+		if err := SaveGlobal(defaultConfig); err != nil {
+			return nil, fmt.Errorf("failed to create config file: %w", err)
+		}
+		return defaultConfig, nil
 	}
 
 	data, err := os.ReadFile(configPath)
@@ -94,4 +105,3 @@ func SaveGlobal(config *GlobalConfig) error {
 
 	return nil
 }
-
