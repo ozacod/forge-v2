@@ -16,7 +16,7 @@ export async function fetchVersion(): Promise<VersionInfo> {
     // Return default version if server is not available
     return {
       version: '0.0.44',
-      cli_version: '1.0.2',
+      cli_version: '1.0.4',
       name: 'cpx',
       description: 'C++ Project Generator',
     };

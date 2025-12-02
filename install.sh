@@ -104,43 +104,29 @@ check_vcpkg() {
 }
 
 # Install vcpkg
+# Returns vcpkg path via stdout (last line) if successful
 install_vcpkg() {
-    printf "\n%bChecking for vcpkg...%b\n" "$CYAN" "$NC"
+    printf "\n%bChecking for vcpkg...%b\n" "$CYAN" "$NC" >&2
     
     # Check if vcpkg is already installed
     VCPKG_PATH=$(check_vcpkg)
     if [ -n "$VCPKG_PATH" ]; then
-        printf "%bvcpkg found at: %s%b\n" "$GREEN" "$VCPKG_PATH" "$NC"
-        configure_vcpkg "$VCPKG_PATH"
+        printf "%bvcpkg found at: %s%b\n" "$GREEN" "$VCPKG_PATH" "$NC" >&2
+        configure_vcpkg "$VCPKG_PATH" >&2
+        # Return vcpkg path (to stdout, not stderr)
+        echo "$VCPKG_PATH"
         return 0
     fi
     
     # Check if git is available (needed to clone vcpkg)
     if ! command -v git > /dev/null 2>&1; then
-        printf "%bWarning: git is not installed. Skipping vcpkg installation.%b\n" "$YELLOW" "$NC"
-        printf "You can install vcpkg manually and configure it with: %bcpx config set-vcpkg-root <path>%b\n" "$CYAN" "$NC"
+        printf "%bWarning: git is not installed. Skipping vcpkg installation.%b\n" "$YELLOW" "$NC" >&2
+        printf "You can install vcpkg manually and configure it with: %bcpx config set-vcpkg-root <path>%b\n" "$CYAN" "$NC" >&2
         return 1
     fi
     
-    # Ask user if they want to install vcpkg (skip in non-interactive mode)
-    if [ ! -t 0 ]; then
-        # Non-interactive mode - skip installation
-        printf "%bSkipping vcpkg installation (non-interactive mode).%b\n" "$YELLOW" "$NC"
-        printf "You can install it later and configure with: %bcpx config set-vcpkg-root <path>%b\n" "$CYAN" "$NC"
-        return 1
-    fi
-    
-    printf "%bvcpkg not found. Would you like to install it? (y/n): %b" "$YELLOW" "$NC"
-    read -r response
-    case "$response" in
-        [yY]|[yY][eE][sS])
-            ;;
-        *)
-            printf "%bSkipping vcpkg installation.%b\n" "$YELLOW" "$NC"
-            printf "You can install it later and configure with: %bcpx config set-vcpkg-root <path>%b\n" "$CYAN" "$NC"
-            return 1
-            ;;
-    esac
+    # Automatically install vcpkg if not found
+    printf "%bInstalling vcpkg...%b\n" "$CYAN" "$NC" >&2
     
     # Determine vcpkg installation directory
     VCPKG_INSTALL_DIR="$HOME/.local/vcpkg"
@@ -148,35 +134,35 @@ install_vcpkg() {
         VCPKG_INSTALL_DIR="$CPX_VCPKG_DIR"
     fi
     
-    printf "%bInstalling vcpkg to %s...%b\n" "$CYAN" "$VCPKG_INSTALL_DIR" "$NC"
+    printf "%bInstalling vcpkg to %s...%b\n" "$CYAN" "$VCPKG_INSTALL_DIR" "$NC" >&2
     
     # Remove existing directory if it exists (incomplete installation)
     if [ -d "$VCPKG_INSTALL_DIR" ]; then
-        printf "%bRemoving existing directory...%b\n" "$YELLOW" "$NC"
+        printf "%bRemoving existing directory...%b\n" "$YELLOW" "$NC" >&2
         rm -rf "$VCPKG_INSTALL_DIR"
     fi
     
     # Clone vcpkg
-    printf "%bCloning vcpkg from GitHub...%b\n" "$CYAN" "$NC"
-    if ! git clone https://github.com/microsoft/vcpkg.git "$VCPKG_INSTALL_DIR"; then
-        printf "%bError: Failed to clone vcpkg%b\n" "$RED" "$NC"
+    printf "%bCloning vcpkg from GitHub...%b\n" "$CYAN" "$NC" >&2
+    if ! git clone https://github.com/microsoft/vcpkg.git "$VCPKG_INSTALL_DIR" >&2; then
+        printf "%bError: Failed to clone vcpkg%b\n" "$RED" "$NC" >&2
         return 1
     fi
     
     # Bootstrap vcpkg
-    printf "%bBootstrapping vcpkg...%b\n" "$CYAN" "$NC"
+    printf "%bBootstrapping vcpkg...%b\n" "$CYAN" "$NC" >&2
     cd "$VCPKG_INSTALL_DIR" || return 1
     
     OS=$(detect_os)
     if [ "$OS" = "windows" ]; then
-        if ! ./bootstrap-vcpkg.bat; then
-            printf "%bError: Failed to bootstrap vcpkg%b\n" "$RED" "$NC"
+        if ! ./bootstrap-vcpkg.bat >&2; then
+            printf "%bError: Failed to bootstrap vcpkg%b\n" "$RED" "$NC" >&2
             cd - > /dev/null || true
             return 1
         fi
     else
-        if ! ./bootstrap-vcpkg.sh; then
-            printf "%bError: Failed to bootstrap vcpkg%b\n" "$RED" "$NC"
+        if ! ./bootstrap-vcpkg.sh >&2; then
+            printf "%bError: Failed to bootstrap vcpkg%b\n" "$RED" "$NC" >&2
             cd - > /dev/null || true
             return 1
         fi
@@ -184,10 +170,14 @@ install_vcpkg() {
     
     cd - > /dev/null || true
     
-    printf "%bSuccessfully installed vcpkg to %s%b\n" "$GREEN" "$VCPKG_INSTALL_DIR" "$NC"
+    printf "%bSuccessfully installed vcpkg to %s%b\n" "$GREEN" "$VCPKG_INSTALL_DIR" "$NC" >&2
     
     # Configure cpx to use vcpkg
-    configure_vcpkg "$VCPKG_INSTALL_DIR"
+    configure_vcpkg "$VCPKG_INSTALL_DIR" >&2
+    
+    # Return vcpkg path (to stdout, not stderr)
+    echo "$VCPKG_INSTALL_DIR"
+    return 0
 }
 
 # Configure cpx to use vcpkg
@@ -227,7 +217,7 @@ get_latest_version() {
     fi
     
     if [ -z "$VERSION" ]; then
-        VERSION="v1.0.2"
+        VERSION="v1.0.4"
     fi
     echo "$VERSION"
 }
@@ -280,7 +270,151 @@ download_binary() {
         printf "  export PATH=\"\$PATH:%s\"\n" "$INSTALL_DIR"
     else
         printf "%b%s is ready to use!%b\n" "$GREEN" "$BINARY_NAME" "$NC"
-        printf "Run '%b%s version%b' to verify installation.\n" "$CYAN" "$BINARY_NAME" "$NC"
+        printf "Run '%b%s --version%b' to verify installation.\n" "$CYAN" "$BINARY_NAME" "$NC"
+    fi
+}
+
+# Get config directory path
+get_config_dir() {
+    OS=$1
+    if [ "$OS" = "windows" ]; then
+        if [ -n "$APPDATA" ]; then
+            echo "$APPDATA/cpx"
+        else
+            echo "$HOME/AppData/Roaming/cpx"
+        fi
+    else
+        echo "$HOME/.config/cpx"
+    fi
+}
+
+# Create or update cpx config file
+create_config_file() {
+    OS=$1
+    VCPKG_PATH=$2
+    
+    CONFIG_DIR=$(get_config_dir "$OS")
+    CONFIG_FILE="$CONFIG_DIR/config.yaml"
+    
+    printf "\n%bSetting up cpx config file...%b\n" "$CYAN" "$NC" >&2
+    
+    # Create config directory
+    if ! mkdir -p "$CONFIG_DIR" 2>/dev/null; then
+        printf "%bWarning: Failed to create config directory: %s%b\n" "$YELLOW" "$CONFIG_DIR" "$NC" >&2
+        return 1
+    fi
+    
+    # If config file exists and vcpkg path is provided, update it
+    if [ -f "$CONFIG_FILE" ] && [ -n "$VCPKG_PATH" ]; then
+        # Update existing config file with vcpkg path
+        if command -v sed > /dev/null 2>&1; then
+            # Use sed to update vcpkg_root if it's empty or update existing value
+            if grep -q "^vcpkg_root:" "$CONFIG_FILE"; then
+                # Escape slashes in path for sed
+                ESCAPED_PATH=$(echo "$VCPKG_PATH" | sed 's/\//\\\//g')
+                sed -i.bak "s/^vcpkg_root:.*/vcpkg_root: \"$ESCAPED_PATH\"/" "$CONFIG_FILE" 2>/dev/null || \
+                sed -i '' "s/^vcpkg_root:.*/vcpkg_root: \"$ESCAPED_PATH\"/" "$CONFIG_FILE" 2>/dev/null
+                rm -f "${CONFIG_FILE}.bak" 2>/dev/null || true
+                printf "%bUpdated config file with vcpkg path: %s%b\n" "$GREEN" "$VCPKG_PATH" "$NC" >&2
+            else
+                # Add vcpkg_root if it doesn't exist
+                echo "vcpkg_root: \"$VCPKG_PATH\"" >> "$CONFIG_FILE"
+                printf "%bAdded vcpkg path to config file: %s%b\n" "$GREEN" "$VCPKG_PATH" "$NC" >&2
+            fi
+        else
+            # Fallback: recreate file with vcpkg path
+            printf "vcpkg_root: \"%s\"\n" "$VCPKG_PATH" > "$CONFIG_FILE"
+            printf "%bUpdated config file with vcpkg path: %s%b\n" "$GREEN" "$VCPKG_PATH" "$NC" >&2
+        fi
+        return 0
+    fi
+    
+    # Create new config file
+    if [ ! -f "$CONFIG_FILE" ]; then
+        printf "%bCreating cpx config file...%b\n" "$CYAN" "$NC" >&2
+        
+        if [ -n "$VCPKG_PATH" ]; then
+            # Create config file with vcpkg path
+            printf "vcpkg_root: \"%s\"\n" "$VCPKG_PATH" > "$CONFIG_FILE"
+        else
+            # Create config file with empty vcpkg_root
+            printf "vcpkg_root: \"\"\n" > "$CONFIG_FILE"
+        fi
+        
+        if [ -f "$CONFIG_FILE" ]; then
+            printf "%bCreated config file: %s%b\n" "$GREEN" "$CONFIG_FILE" "$NC" >&2
+            return 0
+        else
+            printf "%bWarning: Failed to create config file%b\n" "$YELLOW" "$NC" >&2
+            return 1
+        fi
+    fi
+    
+    # Config file already exists, nothing to do
+    printf "%bConfig file already exists: %s%b\n" "$GREEN" "$CONFIG_FILE" "$NC" >&2
+    
+    return 0
+}
+
+# Install dockerfiles to config directory
+install_dockerfiles() {
+    OS=$1
+    
+    CONFIG_DIR=$(get_config_dir "$OS")
+    DOCKERFILES_DIR="$CONFIG_DIR/dockerfiles"
+    
+    # Check if dockerfiles already exist
+    if [ -d "$DOCKERFILES_DIR" ] && [ -f "$DOCKERFILES_DIR/Dockerfile.linux-amd64" ]; then
+        printf "%bDockerfiles already installed.%b\n" "$GREEN" "$NC" >&2
+        return 0
+    fi
+    
+    printf "%bInstalling dockerfiles...%b\n" "$CYAN" "$NC" >&2
+    
+    # Create dockerfiles directory
+    if ! mkdir -p "$DOCKERFILES_DIR" 2>/dev/null; then
+        printf "%bWarning: Failed to create dockerfiles directory: %s%b\n" "$YELLOW" "$DOCKERFILES_DIR" "$NC" >&2
+        return 1
+    fi
+    
+    # List of dockerfiles to download
+    DOCKERFILES=(
+        "Dockerfile.linux-amd64"
+        "Dockerfile.linux-arm64"
+        "Dockerfile.windows-amd64"
+        "Dockerfile.macos-amd64"
+        "Dockerfile.macos-arm64"
+        "cpx.ci.example"
+        "README.md"
+    )
+    
+    # Download each dockerfile from GitHub
+    BASE_URL="https://raw.githubusercontent.com/$REPO/main/dockerfiles"
+    FAILED=0
+    
+    for dockerfile in "${DOCKERFILES[@]}"; do
+        DEST_PATH="$DOCKERFILES_DIR/$dockerfile"
+        DOWNLOAD_URL="$BASE_URL/$dockerfile"
+        
+        if [ "$DOWNLOADER" = "curl" ]; then
+            if ! curl -fsSL "$DOWNLOAD_URL" -o "$DEST_PATH" 2>/dev/null; then
+                printf "%bWarning: Failed to download %s%b\n" "$YELLOW" "$dockerfile" "$NC" >&2
+                FAILED=1
+            fi
+        else
+            if ! wget -q "$DOWNLOAD_URL" -O "$DEST_PATH" 2>/dev/null; then
+                printf "%bWarning: Failed to download %s%b\n" "$YELLOW" "$dockerfile" "$NC" >&2
+                FAILED=1
+            fi
+        fi
+    done
+    
+    if [ $FAILED -eq 0 ]; then
+        printf "%bSuccessfully installed dockerfiles to %s%b\n" "$GREEN" "$DOCKERFILES_DIR" "$NC" >&2
+        return 0
+    else
+        printf "%bWarning: Some dockerfiles failed to download. You can download them later with 'cpx upgrade'.%b\n" "$YELLOW" "$NC" >&2
+        return 1
     fi
 }
 
@@ -299,10 +433,49 @@ main() {
     
     download_binary "$OS" "$ARCH" "$VERSION"
     
+    # Always create config file first (before vcpkg check)
+    printf "\n"
+    create_config_file "$OS" "" || true
+    
+    # Install dockerfiles
+    install_dockerfiles "$OS" || true
+    
     # Try to install/configure vcpkg (non-fatal if it fails)
     # Skip on Windows unless in Git Bash/MSYS2
+    VCPKG_PATH=""
     if [ "$OS" != "windows" ] || [ -n "$MSYSTEM" ]; then
-        install_vcpkg || true
+        printf "\n"
+        # First check if vcpkg already exists (suppress errors with || true)
+        EXISTING_VCPKG=$(check_vcpkg 2>/dev/null || echo "")
+        if [ -n "$EXISTING_VCPKG" ]; then
+            VCPKG_PATH="$EXISTING_VCPKG"
+            printf "%bFound existing vcpkg at: %s%b\n" "$GREEN" "$VCPKG_PATH" "$NC"
+            configure_vcpkg "$VCPKG_PATH" || true
+            # Update config file with vcpkg path
+            create_config_file "$OS" "$VCPKG_PATH" || true
+        else
+            # Install vcpkg automatically
+            printf "%bInstalling vcpkg...%b\n" "$CYAN" "$NC"
+            # Capture all output (stderr messages + stdout path)
+            OUTPUT=$(install_vcpkg 2>&1 || echo "INSTALL_FAILED")
+            INSTALL_EXIT=$?
+            # Display all output except the last line (which is the path)
+            if [ -n "$OUTPUT" ] && [ "$OUTPUT" != "INSTALL_FAILED" ]; then
+                echo "$OUTPUT" | sed '$d'
+            fi
+            # Get the last line which should be the vcpkg path
+            if [ "$OUTPUT" != "INSTALL_FAILED" ]; then
+                VCPKG_PATH=$(echo "$OUTPUT" | tail -1)
+            fi
+            # Only use the path if it looks valid and installation succeeded
+            if [ $INSTALL_EXIT -eq 0 ] && [ -n "$VCPKG_PATH" ] && [ -d "$VCPKG_PATH" ]; then
+                # Update config file with vcpkg path
+                create_config_file "$OS" "$VCPKG_PATH" || true
+            elif [ $INSTALL_EXIT -ne 0 ] || [ "$OUTPUT" = "INSTALL_FAILED" ]; then
+                printf "%bWarning: vcpkg installation failed. You can install it manually later.%b\n" "$YELLOW" "$NC"
+                printf "  Run: %bcpx config set-vcpkg-root <path>%b\n" "$CYAN" "$NC"
+            fi
+        fi
     else
         printf "\n%bNote: vcpkg installation on Windows requires manual setup.%b\n" "$YELLOW" "$NC"
         printf "After installing vcpkg, run: %bcpx config set-vcpkg-root <path>%b\n" "$CYAN" "$NC"

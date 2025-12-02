@@ -13,7 +13,7 @@ import (
 
 const (
 	Version    = "0.0.44"
-	CLIVersion = "1.0.2"
+	CLIVersion = "1.0.4"
 )
 
 func main() {

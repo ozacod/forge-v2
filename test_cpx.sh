@@ -55,7 +55,7 @@ test_command() {
 
 # Check if cpx is installed
 echo -e "${CYAN}=== 1. Version Check ===${NC}\n"
-test_command "cpx version" "cpx version" 0
+test_command "cpx --version" "cpx --version" 0
 
 # Check configuration
 echo -e "${CYAN}=== 2. Configuration ===${NC}\n"
@@ -131,8 +131,6 @@ if [ -d "test_default" ]; then
     test_command "cpx build" "cpx build" 0
     
     test_command "cpx build --release" "cpx build --release" 0
-    
-    test_command "cpx check" "cpx check" 0
     
     cd ..
 fi

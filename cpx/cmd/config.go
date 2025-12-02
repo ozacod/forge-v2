@@ -53,12 +53,19 @@ func runConfigSetVcpkgRoot(cmd *cobra.Command, args []string) error {
 }
 
 func showConfig() error {
+	configPath, err := config.GetConfigPath()
+	if err != nil {
+		return fmt.Errorf("failed to get config path: %w", err)
+	}
+
 	cfg, err := config.LoadGlobal()
 	if err != nil {
+		fmt.Printf("%sCpx Configuration%s\n", Bold, Reset)
+		fmt.Printf("  Config file: %s\n", configPath)
+		fmt.Printf("  %sError: %s%s\n", Red, err, Reset)
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	configPath, _ := config.GetConfigPath()
 	fmt.Printf("%sCpx Configuration%s\n", Bold, Reset)
 	fmt.Printf("  Config file: %s\n", configPath)
 	fmt.Printf("  vcpkg_root: %s\n", cfg.VcpkgRoot)
