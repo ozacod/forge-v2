@@ -1,5 +1,5 @@
 // Semgrep Example - Go Security and Bug Detection
-// Run: forge semgrep
+// Run: cpx semgrep
 // This file demonstrates Go code patterns that Semgrep can detect
 
 package main
@@ -84,7 +84,7 @@ func main() {
 	fmt.Println("=============================================")
 	fmt.Println()
 	fmt.Println("This file contains Go code patterns that Semgrep can detect.")
-	fmt.Println("Run 'forge semgrep' to scan for issues.")
+	fmt.Println("Run 'cpx semgrep' to scan for issues.")
 	fmt.Println()
 	fmt.Println("Common Semgrep detections in Go:")
 	fmt.Println("- Command injection vulnerabilities")

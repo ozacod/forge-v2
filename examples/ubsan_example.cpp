@@ -1,5 +1,5 @@
 // UndefinedBehaviorSanitizer Example - Undefined Behavior
-// Compile: forge check --ubsan
+// Compile: cpx check --ubsan
 // Run: ./build/ubsan_example
 
 #include <iostream>

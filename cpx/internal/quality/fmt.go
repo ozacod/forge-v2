@@ -15,7 +15,7 @@ func FormatCode(checkOnly bool) error {
 		return fmt.Errorf("clang-format not found. Please install it first")
 	}
 
-	fmt.Printf("%sé® Formatting code...%s\n", Cyan, Reset)
+	fmt.Printf("%s Formatting code...%s\n", Cyan, Reset)
 
 	// Find all source files
 	var files []string
@@ -60,7 +60,7 @@ func FormatCode(checkOnly bool) error {
 
 		if checkOnly && err != nil {
 			needsFormat = true
-			fmt.Printf("   %só %s needs formatting%s\n", Yellow, file, Reset)
+			fmt.Printf("   %s %s needs formatting%s\n", Yellow, file, Reset)
 		} else if !checkOnly {
 			fmt.Printf("    %s\n", file)
 		}

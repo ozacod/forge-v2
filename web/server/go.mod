@@ -1,4 +1,4 @@
-module github.com/ozacod/forge/web/server
+module github.com/ozacod/cpx/web/server
 
 go 1.21
 

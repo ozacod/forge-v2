@@ -1,5 +1,5 @@
 // Semgrep Example - Security and Bug Detection
-// Run: forge semgrep
+// Run: cpx semgrep
 // This file demonstrates code patterns that Semgrep can detect
 
 #include <iostream>
@@ -107,7 +107,7 @@ int main() {
     std::cout << "Semgrep Example: Security and Bug Detection\n";
     std::cout << "===========================================\n\n";
     std::cout << "This file contains code patterns that Semgrep can detect.\n";
-    std::cout << "Run 'forge semgrep' to scan for issues.\n\n";
+    std::cout << "Run 'cpx semgrep' to scan for issues.\n\n";
     
     std::cout << "Common Semgrep detections:\n";
     std::cout << "- Command injection vulnerabilities\n";

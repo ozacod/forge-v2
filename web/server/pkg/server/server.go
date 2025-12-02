@@ -37,7 +37,7 @@ func SetupServer() (*gin.Engine, error) {
 
 	// Static file serving
 	staticDir := "static"
-	if envDir := os.Getenv("FORGE_STATIC_DIR"); envDir != "" {
+	if envDir := os.Getenv("CPX_STATIC_DIR"); envDir != "" {
 		staticDir = envDir
 	}
 
@@ -70,7 +70,7 @@ func SetupServer() (*gin.Engine, error) {
 	if !hasStatic {
 		r.GET("/", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
-				"message":     "Forge API - C++ Project Generator",
+				"message":     "Cpx API - C++ Project Generator",
 				"version":     Version,
 				"cli_version": CLIVersion,
 				"docs":        "/docs",
@@ -84,7 +84,7 @@ func SetupServer() (*gin.Engine, error) {
 
 func apiRoot(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"message":     "Forge API - C++ Project Generator",
+		"message":     "Cpx API - C++ Project Generator",
 		"version":     Version,
 		"cli_version": CLIVersion,
 		"docs":        "/docs",

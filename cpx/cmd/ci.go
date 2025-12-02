@@ -137,7 +137,7 @@ func runCICommand(targetName string, rebuild bool) error {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	fmt.Printf("%s�� Building for %d target(s) using Docker...%s\n", Cyan, len(targets), Reset)
+	fmt.Printf("%s Building for %d target(s) using Docker...%s\n", Cyan, len(targets), Reset)
 
 	// Get current working directory (project root)
 	projectRoot, err := os.Getwd()
@@ -305,7 +305,7 @@ func generateGitLabCI() error {
 	gitlabCIContent := `image: golang:1.21
 
 variables:
-  FORGE_VERSION: latest
+  CPX_VERSION: latest
 
 before_script:
   - apt-get update && apt-get install -y curl docker.io
@@ -346,7 +346,7 @@ func buildDockerImage(dockerfilePath, imageName, platform string, rebuild bool) 
 		}
 	}
 
-	fmt.Printf("  %s� Building Docker image: %s...%s\n", Cyan, imageName, Reset)
+	fmt.Printf("  %s Building Docker image: %s...%s\n", Cyan, imageName, Reset)
 
 	// Get absolute paths
 	absDockerfilePath, err := filepath.Abs(dockerfilePath)
@@ -615,7 +615,7 @@ mkdir -p /tmp/.vcpkg_cache
 mkdir -p "$VCPKG_INSTALLED_DIR" "$VCPKG_DOWNLOADS" "$VCPKG_BUILDTREES_ROOT" "%s" "$X_VCPKG_REGISTRIES_CACHE"
 # Ensure build directory exists (mounted from host)
 mkdir -p %s
-echo "�  Configuring CMake..."
+echo "  Configuring CMake..."
 cmake %s
 echo " Building..."
 cmake %s
@@ -626,7 +626,7 @@ echo " Build complete!"
 `, vcpkgInstalledPath, vcpkgDownloadsPath, vcpkgBuildtreesPath, binaryCachePath, binaryCachePath, containerBuildDir, strings.Join(cmakeArgs, " "), strings.Join(buildArgs, " "), target.Name, copyCommand)
 
 	// Run Docker container
-	fmt.Printf("  %s� Running build in Docker container...%s\n", Cyan, Reset)
+	fmt.Printf("  %s Running build in Docker container...%s\n", Cyan, Reset)
 
 	// Use platform from target config
 	platform := target.Platform

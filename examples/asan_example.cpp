@@ -1,5 +1,5 @@
 // AddressSanitizer Example - Buffer Overflow
-// Compile: forge check --asan
+// Compile: cpx check --asan
 // Run: ./build/asan_example
 
 #include <iostream>

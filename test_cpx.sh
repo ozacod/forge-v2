@@ -1,7 +1,7 @@
 #!/bin/bash
-# Manual test script for Forge CLI
-# This script tests various forge functionalities
-# Usage: ./test_forge.sh
+# Manual test script for Cpx CLI
+# This script tests various cpx functionalities
+# Usage: ./test_cpx.sh
 
 # Don't use set -e globally, handle errors in test_command function
 
@@ -13,11 +13,11 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Test directory
-TEST_DIR="/tmp/forge_test_$$"
+TEST_DIR="/tmp/cpx_test_$$"
 mkdir -p "$TEST_DIR"
 cd "$TEST_DIR"
 
-echo -e "${CYAN}=== Forge Manual Test Suite ===${NC}\n"
+echo -e "${CYAN}=== Cpx Manual Test Suite ===${NC}\n"
 echo -e "Test directory: ${TEST_DIR}\n"
 
 # Counter
@@ -35,7 +35,7 @@ test_command() {
     
     # Temporarily disable exit on error to capture exit code
     set +e
-    eval "$command" > /tmp/forge_test_output.log 2>&1
+    eval "$command" > /tmp/cpx_test_output.log 2>&1
     exit_code=$?
     set -e  # Re-enable (though we don't use it globally)
     
@@ -46,20 +46,20 @@ test_command() {
     else
         echo -e "${RED}✗ FAILED (exit code: $exit_code, expected: $expected_exit)${NC}"
         echo -e "Output:"
-        cat /tmp/forge_test_output.log | head -20
+        cat /tmp/cpx_test_output.log | head -20
         echo -e "${NC}\n"
         ((FAILED++))
         return 1
     fi
 }
 
-# Check if forge is installed
+# Check if cpx is installed
 echo -e "${CYAN}=== 1. Version Check ===${NC}\n"
-test_command "forge version" "forge version" 0
+test_command "cpx version" "cpx version" 0
 
 # Check configuration
 echo -e "${CYAN}=== 2. Configuration ===${NC}\n"
-test_command "get vcpkg root" "forge config get vcpkg-root" 0
+test_command "get vcpkg root" "cpx config get vcpkg-root" 0
 
 # Project creation tests
 echo -e "${CYAN}=== 3. Project Creation ===${NC}\n"
@@ -67,10 +67,10 @@ echo -e "${CYAN}=== 3. Project Creation ===${NC}\n"
 # Test default template
 echo -e "${YELLOW}Creating project with default template...${NC}"
 set +e  # Don't exit on error for project creation checks
-forge create test_default --template default > /tmp/forge_test_output.log 2>&1
+cpx create test_default --template default > /tmp/cpx_test_output.log 2>&1
 create_exit=$?
 if [ $create_exit -eq 0 ]; then
-    if [ -d "test_default" ] && [ -f "test_default/CMakeLists.txt" ] && [ -f "test_default/forge.yaml" ]; then
+    if [ -d "test_default" ] && [ -f "test_default/CMakeLists.txt" ] && [ -f "test_default/cpx.yaml" ]; then
         echo -e "${GREEN}✓ Default template project created${NC}\n"
         ((PASSED++))
     else
@@ -79,17 +79,17 @@ if [ $create_exit -eq 0 ]; then
     fi
 else
     echo -e "${RED}✗ Default template project creation failed${NC}\n"
-    cat /tmp/forge_test_output.log | head -10
+    cat /tmp/cpx_test_output.log | head -10
     ((FAILED++))
 fi
 set -e  # Re-enable exit on error
 
 # Test catch template
 echo -e "${YELLOW}Creating project with catch template...${NC}"
-forge create test_catch --template catch > /tmp/forge_test_output.log 2>&1
+cpx create test_catch --template catch > /tmp/cpx_test_output.log 2>&1
 create_exit=$?
 if [ $create_exit -eq 0 ]; then
-    if [ -d "test_catch" ] && [ -f "test_catch/CMakeLists.txt" ] && [ -f "test_catch/forge.yaml" ]; then
+    if [ -d "test_catch" ] && [ -f "test_catch/CMakeLists.txt" ] && [ -f "test_catch/cpx.yaml" ]; then
         echo -e "${GREEN}✓ Catch template project created${NC}\n"
         ((PASSED++))
     else
@@ -98,14 +98,14 @@ if [ $create_exit -eq 0 ]; then
     fi
 else
     echo -e "${RED}✗ Catch template project creation failed${NC}\n"
-    cat /tmp/forge_test_output.log | head -10
+    cat /tmp/cpx_test_output.log | head -10
     ((FAILED++))
 fi
 set -e
 
 # Test library creation
 echo -e "${YELLOW}Creating library project...${NC}"
-forge create test_lib --lib > /tmp/forge_test_output.log 2>&1
+cpx create test_lib --lib > /tmp/cpx_test_output.log 2>&1
 create_exit=$?
 if [ $create_exit -eq 0 ]; then
     if [ -d "test_lib" ] && [ -f "test_lib/CMakeLists.txt" ]; then
@@ -117,7 +117,7 @@ if [ $create_exit -eq 0 ]; then
     fi
 else
     echo -e "${RED}✗ Library project creation failed${NC}\n"
-    cat /tmp/forge_test_output.log | head -10
+    cat /tmp/cpx_test_output.log | head -10
     ((FAILED++))
 fi
 set -e
@@ -128,11 +128,11 @@ echo -e "${CYAN}=== 4. Build & Run ===${NC}\n"
 if [ -d "test_default" ]; then
     cd test_default
     
-    test_command "forge build" "forge build" 0
+    test_command "cpx build" "cpx build" 0
     
-    test_command "forge build --release" "forge build --release" 0
+    test_command "cpx build --release" "cpx build --release" 0
     
-    test_command "forge check" "forge check" 0
+    test_command "cpx check" "cpx check" 0
     
     cd ..
 fi
@@ -143,11 +143,11 @@ echo -e "${CYAN}=== 5. Dependency Management ===${NC}\n"
 if [ -d "test_default" ]; then
     cd test_default
     
-    test_command "forge add port fmt" "forge add port fmt" 0
+    test_command "cpx add port fmt" "cpx add port fmt" 0
     
-    test_command "forge list" "forge list" 0
+    test_command "cpx list" "cpx list" 0
     
-    test_command "forge search json" "forge search json" 0
+    test_command "cpx search json" "cpx search json" 0
     
     cd ..
 fi
@@ -171,20 +171,20 @@ if [ -d "test_default" ]; then
     set -e
     
     # fmt --check may return non-zero if formatting is needed, that's OK
-    echo -e "${YELLOW}Testing: forge fmt --check${NC}"
-    echo -e "Command: ${CYAN}forge fmt --check${NC}"
+    echo -e "${YELLOW}Testing: cpx fmt --check${NC}"
+    echo -e "Command: ${CYAN}cpx fmt --check${NC}"
     set +e
-    if forge fmt --check > /tmp/forge_test_output.log 2>&1; then
+    if cpx fmt --check > /tmp/cpx_test_output.log 2>&1; then
         echo -e "${GREEN}✓ PASSED (code is formatted)${NC}\n"
         ((PASSED++))
     else
         # Check if it's just a formatting issue (expected)
-        if grep -q "needs formatting" /tmp/forge_test_output.log || grep -q "clang-format-violations" /tmp/forge_test_output.log; then
+        if grep -q "needs formatting" /tmp/cpx_test_output.log || grep -q "clang-format-violations" /tmp/cpx_test_output.log; then
             echo -e "${GREEN}✓ PASSED (formatting check works, code needs formatting)${NC}\n"
             ((PASSED++))
         else
             echo -e "${RED}✗ FAILED${NC}"
-            cat /tmp/forge_test_output.log | head -10
+            cat /tmp/cpx_test_output.log | head -10
             ((FAILED++))
         fi
     fi
@@ -193,7 +193,7 @@ if [ -d "test_default" ]; then
     # Format the code first, then check again
     echo -e "${YELLOW}Formatting code...${NC}"
     set +e
-    if forge fmt > /tmp/forge_test_output.log 2>&1; then
+    if cpx fmt > /tmp/cpx_test_output.log 2>&1; then
         echo -e "${GREEN}✓ Code formatted${NC}\n"
     else
         # Formatting may have warnings, that's OK
@@ -201,24 +201,24 @@ if [ -d "test_default" ]; then
     fi
     set -e
     
-    test_command "forge lint" "forge lint" 0
+    test_command "cpx lint" "cpx lint" 0
     
     # Semgrep (may not find issues, that's OK)
-    test_command "forge semgrep --quiet" "forge semgrep --quiet" 0
+    test_command "cpx semgrep --quiet" "cpx semgrep --quiet" 0
     
     # Flawfinder (requires git-tracked files, may not find issues, that's OK)
-    echo -e "${YELLOW}Testing: forge flawfinder --quiet${NC}"
-    echo -e "Command: ${CYAN}forge flawfinder --quiet${NC}"
+    echo -e "${YELLOW}Testing: cpx flawfinder --quiet${NC}"
+    echo -e "Command: ${CYAN}cpx flawfinder --quiet${NC}"
     set +e
-    forge flawfinder --quiet > /tmp/forge_test_output.log 2>&1
+    cpx flawfinder --quiet > /tmp/cpx_test_output.log 2>&1
     flawfinder_exit=$?
     if [ $flawfinder_exit -eq 0 ]; then
         echo -e "${GREEN}✓ PASSED${NC}\n"
         ((PASSED++))
-    elif grep -q "no git-tracked" /tmp/forge_test_output.log; then
+    elif grep -q "no git-tracked" /tmp/cpx_test_output.log; then
         # If no files found, try with --no-git-ignore or just accept it
         echo -e "${YELLOW}Note: No git-tracked files found, trying with --no-git-ignore...${NC}"
-        if forge flawfinder --quiet --no-git-ignore > /tmp/forge_test_output.log 2>&1; then
+        if cpx flawfinder --quiet --no-git-ignore > /tmp/cpx_test_output.log 2>&1; then
             echo -e "${GREEN}✓ PASSED (with --no-git-ignore)${NC}\n"
             ((PASSED++))
         else
@@ -232,7 +232,7 @@ if [ -d "test_default" ]; then
     set -e
     
     # Cppcheck (may not find issues, that's OK)
-    test_command "forge cppcheck --quiet" "forge cppcheck --quiet" 0
+    test_command "cpx cppcheck --quiet" "cpx cppcheck --quiet" 0
     
     cd ..
 fi
@@ -244,7 +244,7 @@ if [ -d "test_default" ]; then
     cd test_default
     
     echo -e "${YELLOW}Testing AddressSanitizer (this may take a while)...${NC}"
-    test_command "forge check --asan" "forge check --asan" 0
+    test_command "cpx check --asan" "cpx check --asan" 0
     
     cd ..
 fi
@@ -260,7 +260,7 @@ if [ -d "test_default" ]; then
         git init > /dev/null 2>&1
     fi
     
-    test_command "forge hooks install" "forge hooks install" 0
+    test_command "cpx hooks install" "cpx hooks install" 0
     
     if [ -f ".git/hooks/pre-commit" ] || [ -f ".git/hooks/pre-commit.sample" ]; then
         echo -e "${GREEN}✓ Git hooks installed${NC}\n"
@@ -278,11 +278,11 @@ echo -e "${CYAN}=== 9. CI/CD ===${NC}\n"
 
 # CI tests need to be run from project root or a project directory
 # Create a temp project for CI tests
-TEMP_CI_DIR="/tmp/forge_ci_test_$$"
+TEMP_CI_DIR="/tmp/cpx_ci_test_$$"
 mkdir -p "$TEMP_CI_DIR"
 cd "$TEMP_CI_DIR"
 
-test_command "forge ci init --github-actions" "forge ci init --github-actions" 0
+test_command "cpx ci init --github-actions" "cpx ci init --github-actions" 0
 
 set +e
 if [ -f ".github/workflows/ci.yml" ]; then
@@ -295,7 +295,7 @@ else
 fi
 set -e
 
-test_command "forge ci init --gitlab" "forge ci init --gitlab" 0
+test_command "cpx ci init --gitlab" "cpx ci init --gitlab" 0
 
 set +e
 if [ -f ".gitlab-ci.yml" ]; then
@@ -314,7 +314,7 @@ rm -rf "$TEMP_CI_DIR"
 
 # Cleanup
 echo -e "${CYAN}=== 10. Cleanup ===${NC}\n"
-test_command "forge clean" "cd test_default && forge clean" 0
+test_command "cpx clean" "cd test_default && cpx clean" 0
 
 # Summary
 echo -e "\n${CYAN}=== Test Summary ===${NC}\n"

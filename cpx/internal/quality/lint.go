@@ -34,12 +34,12 @@ func LintCode(fix bool, vcpkg VcpkgSetup) error {
 
 	if _, err := os.Stat(compileDb); os.IsNotExist(err) {
 		needsRegenerate = true
-		fmt.Printf("%s™  Generating compile_commands.json...%s\n", Cyan, Reset)
+		fmt.Printf("%s  Generating compile_commands.json...%s\n", Cyan, Reset)
 	} else {
 		// Check if CMakeCache.txt exists - if not, we need to configure
 		if _, err := os.Stat("build/CMakeCache.txt"); os.IsNotExist(err) {
 			needsRegenerate = true
-			fmt.Printf("%s™  Regenerating compile_commands.json (CMake not configured)...%s\n", Cyan, Reset)
+			fmt.Printf("%s  Regenerating compile_commands.json (CMake not configured)...%s\n", Cyan, Reset)
 		}
 	}
 

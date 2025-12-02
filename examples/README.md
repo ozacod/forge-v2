@@ -21,7 +21,7 @@ This directory contains example C++ and Go files that demonstrate violations tha
 Detects memory errors: buffer overflows, use-after-free, double-free, memory leaks.
 
 ```bash
-forge check --asan
+cpx check --asan
 ./build/asan_example
 ```
 
@@ -35,7 +35,7 @@ forge check --asan
 Detects data races in multi-threaded code.
 
 ```bash
-forge check --tsan
+cpx check --tsan
 ./build/tsan_example
 ```
 
@@ -47,7 +47,7 @@ forge check --tsan
 Detects uninitialized memory reads.
 
 ```bash
-forge check --msan
+cpx check --msan
 ./build/msan_example
 ```
 
@@ -60,7 +60,7 @@ forge check --msan
 Detects undefined behavior in C++ code.
 
 ```bash
-forge check --ubsan
+cpx check --ubsan
 ./build/ubsan_example
 ```
 
@@ -76,7 +76,7 @@ forge check --ubsan
 Detects security vulnerabilities and bugs in C++ and Go code.
 
 ```bash
-forge semgrep
+cpx semgrep
 ```
 
 **Example detections:**

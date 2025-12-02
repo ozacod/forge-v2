@@ -1,5 +1,5 @@
 // MemorySanitizer Example - Uninitialized Memory
-// Compile: forge check --msan
+// Compile: cpx check --msan
 // Run: ./build/msan_example
 
 #include <iostream>

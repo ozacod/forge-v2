@@ -16,10 +16,10 @@ func NewHooksCmd(loadConfig func(string) (*config.ProjectConfig, error)) *cobra.
 		Use:   "hooks",
 		Short: "Install git hooks",
 		Long: `Install git hooks for code quality and automation:
-  €¢ pre-commit   - Format code and run linters before commit
-  €¢ pre-push     - Run tests and security checks before push
-  €¢ commit-msg   - Validate commit message format
-  €¢ post-merge   - Update dependencies if vcpkg.json changed`,
+   pre-commit   - Format code and run linters before commit
+   pre-push     - Run tests and security checks before push
+   commit-msg   - Validate commit message format
+   post-merge   - Update dependencies if vcpkg.json changed`,
 	}
 
 	installCmd := &cobra.Command{

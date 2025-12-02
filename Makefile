@@ -1,4 +1,4 @@
-# Forge - C++ Project Generator Makefile
+# Cpx - C++ Project Generator Makefile
 
 .PHONY: all build-client build-frontend build-server install clean setup-frontend run-server run-frontend run-go stop-server stop-frontend stop help
 
@@ -98,7 +98,7 @@ deps:
 
 # Help
 help:
-	@echo "Forge - C++ Project Generator"
+	@echo "Cpx - C++ Project Generator"
 	@echo ""
 	@echo "Usage:"
 	@echo "  make build-client      Build the Go CLI client"

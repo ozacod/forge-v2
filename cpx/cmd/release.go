@@ -76,7 +76,7 @@ func bumpVersion(bumpType string) error {
 	newVersion := fmt.Sprintf("%d.%d.%d", major, minor, patch)
 	cfg.Package.Version = newVersion
 
-	fmt.Printf("%s Bumping version: %s † %s%s\n", Cyan, version, newVersion, Reset)
+	fmt.Printf("%s Bumping version: %s  %s%s\n", Cyan, version, newVersion, Reset)
 
 	if err := saveProjectConfig(cfg); err != nil {
 		return err

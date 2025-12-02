@@ -24,12 +24,12 @@ func RunProject(release bool, target string, execArgs []string, setupVcpkgEnv fu
 
 	buildType, _ := DetermineBuildType(release, "")
 
-	fmt.Printf("%s¨ Building '%s' (%s)...%s\n", "\033[36m", projectName, buildType, "\033[0m")
+	fmt.Printf("%s Building '%s' (%s)...%s\n", "\033[36m", projectName, buildType, "\033[0m")
 
 	// Configure CMake if needed
 	buildDir := "build"
 	if _, err := os.Stat(filepath.Join(buildDir, "CMakeCache.txt")); os.IsNotExist(err) {
-		fmt.Printf("%s™  Configuring CMake...%s\n", "\033[36m", "\033[0m")
+		fmt.Printf("%s  Configuring CMake...%s\n", "\033[36m", "\033[0m")
 
 		// Check if CMakePresets.json exists, use preset if available
 		if _, err := os.Stat("CMakePresets.json"); err == nil {
@@ -105,7 +105,7 @@ func RunProject(release bool, target string, execArgs []string, setupVcpkgEnv fu
 		}
 	}
 
-	fmt.Printf("%s€ Running '%s'...%s\n", "\033[36m", execPath, "\033[0m")
+	fmt.Printf("%s Running '%s'...%s\n", "\033[36m", execPath, "\033[0m")
 	runCmd := exec.Command(execPath, execArgs...)
 	runCmd.Stdout = os.Stdout
 	runCmd.Stderr = os.Stderr

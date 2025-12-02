@@ -70,7 +70,7 @@ func Upgrade(_ []string) {
 		return
 	}
 
-	fmt.Printf("%s New version available: %s � %s%s\n", Yellow, currentVersion, latestVersion, Reset)
+	fmt.Printf("%s New version available: %s  %s%s\n", Yellow, currentVersion, latestVersion, Reset)
 	fmt.Printf("   Release: %s\n", release.HTMLURL)
 
 	// Determine platform and architecture

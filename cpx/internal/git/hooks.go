@@ -40,7 +40,7 @@ func InstallHooks(loadConfig func(string) (*config.ProjectConfig, error), defaul
 		return fmt.Errorf("failed to create hooks directory: %w", err)
 	}
 
-	fmt.Printf("%s Installing git hooks...%s\n", "\033[36m", "\033[0m")
+	fmt.Printf("%s Installing git hooks...%s\n", "\033[36m", "\033[0m")
 
 	// Load project config to get hook configuration
 	cfg, err := loadConfig(defaultCfgFile)
@@ -123,7 +123,7 @@ func InstallPreCommitHook(hooksDir string, checks []string) error {
 
 	var sb strings.Builder
 	sb.WriteString("#!/bin/bash\n")
-	sb.WriteString("# Forge pre-commit hook\n")
+	sb.WriteString("# Cpx pre-commit hook\n")
 	sb.WriteString("# Generated from cpx.yaml hooks.precommit configuration\n\n")
 	sb.WriteString("echo \" Running pre-commit checks...\"\n\n")
 
@@ -134,7 +134,7 @@ func InstallPreCommitHook(hooksDir string, checks []string) error {
 		case "fmt":
 			sb.WriteString(`# Format code
 if command -v cpx &> /dev/null; then
-    echo " Formatting code..."
+    echo " Formatting code..."
     if ! cpx fmt; then
         echo "  cpx fmt failed, continuing..."
     fi
@@ -158,9 +158,9 @@ fi
 		case "test":
 			sb.WriteString(`# Run tests
 if command -v cpx &> /dev/null; then
-    echo "ª Running tests..."
+    echo " Running tests..."
     if ! cpx test; then
-        echo "Œ Tests failed. Commit aborted."
+        echo " Tests failed. Commit aborted."
         exit 1
     fi
 else
@@ -223,9 +223,9 @@ func InstallPrePushHook(hooksDir string, checks []string) error {
 
 	var sb strings.Builder
 	sb.WriteString("#!/bin/bash\n")
-	sb.WriteString("# Forge pre-push hook\n")
+	sb.WriteString("# Cpx pre-push hook\n")
 	sb.WriteString("# Generated from cpx.yaml hooks.prepush configuration\n\n")
-	sb.WriteString("echo \"ª Running pre-push checks...\"\n\n")
+	sb.WriteString("echo \" Running pre-push checks...\"\n\n")
 
 	// Generate commands based on checks
 	for _, check := range checks {
@@ -234,9 +234,9 @@ func InstallPrePushHook(hooksDir string, checks []string) error {
 		case "test":
 			sb.WriteString(`# Run tests
 if command -v cpx &> /dev/null; then
-    echo "ª Running tests..."
+    echo " Running tests..."
     if ! cpx test; then
-        echo "Œ Tests failed. Push aborted."
+        echo " Tests failed. Push aborted."
         exit 1
     fi
 else

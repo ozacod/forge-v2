@@ -1,10 +1,10 @@
-module github.com/ozacod/forge/api
+module github.com/ozacod/cpx/api
 
 go 1.21
 
 require (
 	github.com/gin-gonic/gin v1.9.1
-	github.com/ozacod/forge/web/server v0.0.0
+	github.com/ozacod/cpx/web/server v0.0.0
 )
 
 require (
@@ -36,4 +36,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/ozacod/forge/web/server => ../web/server
+replace github.com/ozacod/cpx/web/server => ../web/server

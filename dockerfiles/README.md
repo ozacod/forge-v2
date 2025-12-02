@@ -12,11 +12,11 @@ This directory contains Dockerfiles for cross-compiling C++ projects to differen
 
 ## Installation
 
-These Dockerfiles are automatically downloaded to `~/.config/forge/dockerfiles/` (or `%APPDATA%/forge/dockerfiles/` on Windows) during `forge` installation.
+These Dockerfiles are automatically downloaded to `~/.config/cpx/dockerfiles/` (or `%APPDATA%/cpx/dockerfiles/` on Windows) during `cpx` installation.
 
 ## Usage
 
-These Dockerfiles are intended to be used by `forge` commands for cross-compilation. They include:
+These Dockerfiles are intended to be used by `cpx` commands for cross-compilation. They include:
 
 - Build tools (CMake, Ninja, GCC/Clang)
 - vcpkg installation and bootstrapping
@@ -31,16 +31,16 @@ These Dockerfiles are intended to be used by `forge` commands for cross-compilat
 
 ## Building Images
 
-### Using forge ci command
+### Using cpx ci command
 
 The easiest way to rebuild Docker images is using the `--rebuild` flag:
 
 ```bash
 # Rebuild all images and build all targets
-forge ci --rebuild
+cpx ci --rebuild
 
 # Rebuild image for specific target only
-forge ci --target linux-amd64 --rebuild
+cpx ci --target linux-amd64 --rebuild
 ```
 
 ### Manual Docker build
@@ -49,14 +49,14 @@ To build a Docker image manually from the config directory:
 
 ```bash
 # Get the dockerfiles directory path
-dockerfiles_dir=~/.config/forge/dockerfiles
+dockerfiles_dir=~/.config/cpx/dockerfiles
 
 # Build a specific image
-docker build -f $dockerfiles_dir/Dockerfile.linux-amd64 -t forge-linux-amd64 $dockerfiles_dir
+docker build -f $dockerfiles_dir/Dockerfile.linux-amd64 -t cpx-linux-amd64 $dockerfiles_dir
 
 # Or build all images
 for dockerfile in $dockerfiles_dir/Dockerfile.*; do
-    image_name="forge-$(basename $dockerfile | sed 's/Dockerfile\.//')"
+    image_name="cpx-$(basename $dockerfile | sed 's/Dockerfile\.//')"
     docker build -f $dockerfile -t $image_name $dockerfiles_dir
 done
 ```
@@ -64,7 +64,7 @@ done
 ### When to rebuild
 
 You should rebuild Docker images when:
-- Dockerfiles are updated (after running `forge upgrade`)
+- Dockerfiles are updated (after running `cpx upgrade`)
 - You want to ensure you have the latest vcpkg and build tools
 - Images are corrupted or outdated
 - You've modified the Dockerfiles manually

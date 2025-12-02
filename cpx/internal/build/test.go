@@ -18,13 +18,13 @@ func RunTests(verbose bool, filter string, setupVcpkgEnv func() error) error {
 	if projectName == "" {
 		return fmt.Errorf("failed to get project name from CMakeLists.txt")
 	}
-	fmt.Printf("%sª Running tests for '%s'...%s\n", "\033[36m", projectName, "\033[0m")
+	fmt.Printf("%s Running tests for '%s'...%s\n", "\033[36m", projectName, "\033[0m")
 
 	buildDir := "build"
 
 	// Configure CMake if needed
 	if _, err := os.Stat(filepath.Join(buildDir, "CMakeCache.txt")); os.IsNotExist(err) {
-		fmt.Printf("%s™  Configuring CMake...%s\n", "\033[36m", "\033[0m")
+		fmt.Printf("%s  Configuring CMake...%s\n", "\033[36m", "\033[0m")
 		// Check if CMakePresets.json exists, use preset if available
 		if _, err := os.Stat("CMakePresets.json"); err == nil {
 			// Use "default" preset (VCPKG_ROOT is now set from config)
@@ -57,7 +57,7 @@ func RunTests(verbose bool, filter string, setupVcpkgEnv func() error) error {
 	}
 
 	// Run tests with CTest
-	fmt.Printf("%sª Running tests...%s\n", "\033[36m", "\033[0m")
+	fmt.Printf("%s Running tests...%s\n", "\033[36m", "\033[0m")
 	ctestArgs := []string{"--test-dir", buildDir}
 
 	if verbose {

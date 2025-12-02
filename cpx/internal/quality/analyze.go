@@ -258,13 +258,13 @@ func runCppcheckAnalysis(targets []string) ToolResults {
 	if len(sourceDirs) == 0 {
 		result.Status = "skipped"
 		result.Error = "no source directories found to scan"
-		if os.Getenv("FORGE_DEBUG") != "" {
+		if os.Getenv("CPX_DEBUG") != "" {
 			fmt.Printf("Debug: cppcheck no source directories found, targets: %v\n", targets)
 		}
 		return result
 	}
 
-	if os.Getenv("FORGE_DEBUG") != "" {
+	if os.Getenv("CPX_DEBUG") != "" {
 		fmt.Printf("Debug: cppcheck targets: %v\n", targets)
 		fmt.Printf("Debug: cppcheck sourceDirs: %v\n", sourceDirs)
 	}
@@ -729,7 +729,7 @@ func runFlawfinderAnalysis(targets []string) ToolResults {
 	output := stdout.String()
 
 	// Debug output if enabled
-	if os.Getenv("FORGE_DEBUG") != "" {
+	if os.Getenv("CPX_DEBUG") != "" {
 		fmt.Printf("Debug: flawfinder sourceDirs: %v\n", sourceDirs)
 		fmt.Printf("Debug: flawfinder stdout length: %d\n", len(output))
 		fmt.Printf("Debug: flawfinder stderr length: %d\n", stderr.Len())
@@ -743,7 +743,7 @@ func runFlawfinderAnalysis(targets []string) ToolResults {
 	results := parseFlawfinderCSV(output)
 	result.Results = results
 
-	if os.Getenv("FORGE_DEBUG") != "" {
+	if os.Getenv("CPX_DEBUG") != "" {
 		fmt.Printf("Debug: flawfinder parsed results: %d\n", len(results))
 	}
 

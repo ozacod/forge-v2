@@ -5,9 +5,9 @@ venv
 __pycache__
 *.pyc
 bin/
-forge-client/
-forge-server/venv
-forge-server/__pycache__
-forge-server/static
+cpx-client/
+cpx-server/venv
+cpx-server/__pycache__
+cpx-server/static
 *.log
 

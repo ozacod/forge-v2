@@ -59,8 +59,8 @@ Desktop.ini
 
 # Build output
 bin/
-forge-client/forge
-forge-server/server
+cpx-client/cpx
+cpx-server/server
 
 # =========================
 # Misc

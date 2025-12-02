@@ -1,6 +1,6 @@
-# Forge Web Server
+# Cpx Web Server
 
-Minimal Go server for the Forge web interface using Gin.
+Minimal Go server for the Cpx web interface using Gin.
 
 ## Features
 

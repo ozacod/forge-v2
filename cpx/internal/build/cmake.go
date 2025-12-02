@@ -84,7 +84,7 @@ func ConfigureCMake(buildDir, buildType, cxxFlags string, setupVcpkgEnv func() e
 		// Ensure all vcpkg environment variables are in command environment
 		cmd.Env = os.Environ()
 		// Debug: Show environment variables being passed to CMake
-		if os.Getenv("FORGE_DEBUG") != "" {
+		if os.Getenv("CPX_DEBUG") != "" {
 			fmt.Printf("%s[DEBUG] CMake environment (preset):%s\n", "\033[36m", "\033[0m")
 			for _, env := range cmd.Env {
 				if strings.HasPrefix(env, "VCPKG_") {
@@ -109,7 +109,7 @@ func ConfigureCMake(buildDir, buildType, cxxFlags string, setupVcpkgEnv func() e
 		// Ensure all vcpkg environment variables are in command environment
 		cmd.Env = os.Environ()
 		// Debug: Show environment variables being passed to CMake
-		if os.Getenv("FORGE_DEBUG") != "" {
+		if os.Getenv("CPX_DEBUG") != "" {
 			fmt.Printf("%s[DEBUG] CMake environment (traditional):%s\n", "\033[36m", "\033[0m")
 			for _, env := range cmd.Env {
 				if strings.HasPrefix(env, "VCPKG_") {
@@ -153,7 +153,7 @@ func BuildProject(release bool, jobs int, target string, clean bool, optLevel st
 		optInfo = fmt.Sprintf(" [%s]", cxxFlags)
 	}
 
-	fmt.Printf("%s¨ Building '%s' (%s%s)...%s\n", "\033[36m", projectName, buildType, optInfo, "\033[0m")
+	fmt.Printf("%s Building '%s' (%s%s)...%s\n", "\033[36m", projectName, buildType, optInfo, "\033[0m")
 
 	// Configure CMake if needed or if clean was done
 	needsConfigure := clean
@@ -162,7 +162,7 @@ func BuildProject(release bool, jobs int, target string, clean bool, optLevel st
 	}
 
 	if needsConfigure {
-		fmt.Printf("%s™  Configuring CMake...%s\n", "\033[36m", "\033[0m")
+		fmt.Printf("%s  Configuring CMake...%s\n", "\033[36m", "\033[0m")
 		if err := ConfigureCMake(buildDir, buildType, cxxFlags, setupVcpkgEnv); err != nil {
 			return err
 		}

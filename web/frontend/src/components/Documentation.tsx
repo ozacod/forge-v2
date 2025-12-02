@@ -434,11 +434,6 @@ function Commands({ activeSubSection }: { activeSubSection: string }) {
       { command: 'cpx lint', description: 'Run clang-tidy static analysis', options: [
         { flag: '--fix', desc: 'Auto-fix lint issues' },
       ]},
-        { flag: '--json', desc: 'Output results in JSON format' },
-        { flag: '--quiet', desc: 'Only output findings' },
-        { flag: '--strict', desc: 'Return non-zero exit code on findings' },
-        { flag: '--no-git-ignore', desc: 'Scan untracked files (not just git-tracked files)' },
-      ]},
       { command: 'cpx flawfinder', description: 'Run Flawfinder security analysis for C/C++', options: [
         { flag: '--minlevel <0-5>', desc: 'Minimum risk level to report (default: 1)' },
         { flag: '--html', desc: 'Output results in HTML format' },

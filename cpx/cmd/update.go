@@ -57,7 +57,7 @@ func updateDependencies(specificLib string) error {
 		if specificLib != "" && dep != specificLib {
 			continue
 		}
-		fmt.Printf("   €¢ %s\n", dep)
+		fmt.Printf("    %s\n", dep)
 	}
 
 	return nil

@@ -50,7 +50,7 @@ func setupVcpkgEnv() error {
 		return err
 	}
 
-	if os.Getenv("FORGE_DEBUG") != "" {
+	if os.Getenv("CPX_DEBUG") != "" {
 		fmt.Printf("%s[DEBUG] VCPKG Environment:%s\n", cmd.Cyan, cmd.Reset)
 		fmt.Printf("  VCPKG_ROOT=%s\n", os.Getenv("VCPKG_ROOT"))
 		fmt.Printf("  VCPKG_FEATURE_FLAGS=%s\n", os.Getenv("VCPKG_FEATURE_FLAGS"))
@@ -258,7 +258,7 @@ func createProject(projectName, templatePath string, isLib bool) error {
 		return fmt.Errorf("failed to create directory '%s': %w", projectName, err)
 	}
 
-	fmt.Printf("%s� Creating project '%s'...%s\n", Cyan, projectName, Reset)
+	fmt.Printf("%s Creating project '%s'...%s\n", Cyan, projectName, Reset)
 
 	var cfg *CpxConfig
 	if templatePath != "" {
@@ -270,7 +270,7 @@ func createProject(projectName, templatePath string, isLib bool) error {
 			}
 			actualTemplatePath = filepath.Join(tempDir, templatePath+".yaml")
 
-			fmt.Printf("%s� Downloading template '%s' from GitHub...%s\n", Cyan, templatePath, Reset)
+			fmt.Printf("%s Downloading template '%s' from GitHub...%s\n", Cyan, templatePath, Reset)
 			if err := template.DownloadFromGitHub(templatePath+".yaml", actualTemplatePath); err != nil {
 				return fmt.Errorf("failed to download template '%s' from GitHub: %w", templatePath, err)
 			}
@@ -292,7 +292,7 @@ func createProject(projectName, templatePath string, isLib bool) error {
 		}
 		defaultTemplatePath := filepath.Join(tempDir, "default.yaml")
 
-		fmt.Printf("%s� Downloading default template from GitHub...%s\n", Cyan, Reset)
+		fmt.Printf("%s Downloading default template from GitHub...%s\n", Cyan, Reset)
 		if err := template.DownloadFromGitHub("default.yaml", defaultTemplatePath); err != nil {
 			fmt.Printf("%s  Could not load default template, using built-in defaults...%s\n", Yellow, Reset)
 			cfg = &CpxConfig{}
@@ -356,7 +356,7 @@ func createProject(projectName, templatePath string, isLib bool) error {
 
 	// Install hooks if configured
 	if len(cfg.Hooks.PreCommit) > 0 || len(cfg.Hooks.PrePush) > 0 {
-		fmt.Printf("\n%s� Installing git hooks...%s\n", Cyan, Reset)
+		fmt.Printf("\n%s Installing git hooks...%s\n", Cyan, Reset)
 		originalDir, _ := os.Getwd()
 		defer os.Chdir(originalDir) // Restore original directory
 

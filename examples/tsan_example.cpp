@@ -1,5 +1,5 @@
 // ThreadSanitizer Example - Data Race
-// Compile: forge check --tsan
+// Compile: cpx check --tsan
 // Run: ./build/tsan_example
 
 #include <iostream>
