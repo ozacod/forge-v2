@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface DependenciesInputProps {
   dependencies: string[];
@@ -6,6 +7,7 @@ interface DependenciesInputProps {
 }
 
 export function DependenciesInput({ dependencies, onChange }: DependenciesInputProps) {
+  const { theme } = useTheme();
   const [inputValue, setInputValue] = useState('');
 
   const handleAdd = () => {
@@ -42,7 +44,9 @@ export function DependenciesInput({ dependencies, onChange }: DependenciesInputP
 
   return (
     <div className="card-glass rounded-2xl p-4 space-y-3">
-      <h2 className="font-display font-semibold text-base text-white flex items-center gap-2">
+      <h2 className={`font-display font-semibold text-base flex items-center gap-2 ${
+        theme === 'dark' ? 'text-white' : 'text-gray-900'
+      }`}>
         <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
         </svg>
@@ -60,7 +64,9 @@ export function DependenciesInput({ dependencies, onChange }: DependenciesInputP
           onKeyPress={handleKeyPress}
           onPaste={handlePaste}
           placeholder="e.g., spdlog, fmt, nlohmann-json"
-          className="input-field flex-1 px-3 py-2 rounded-lg text-white font-mono text-sm"
+          className={`input-field flex-1 px-3 py-2 rounded-lg font-mono text-sm ${
+            theme === 'dark' ? 'text-white' : 'text-gray-900'
+          }`}
         />
         <button
           onClick={handleAdd}
@@ -76,11 +82,15 @@ export function DependenciesInput({ dependencies, onChange }: DependenciesInputP
           {dependencies.map((dep) => (
             <div
               key={dep}
-              className="flex items-center justify-between bg-white/5 rounded-lg px-2.5 py-1.5 group"
+              className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 group ${
+                theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'
+              }`}
             >
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                <span className="text-xs text-white font-mono">{dep}</span>
+                <span className={`text-xs font-mono ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>{dep}</span>
               </div>
               <button
                 onClick={() => handleRemove(dep)}
@@ -95,13 +105,21 @@ export function DependenciesInput({ dependencies, onChange }: DependenciesInputP
           ))}
         </div>
       ) : (
-        <div className="text-center py-4 text-gray-500">
+        <div className={`text-center py-4 ${
+          theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+        }`}>
           <p className="text-xs">No dependencies</p>
-          <p className="text-xs mt-0.5 text-gray-600">Add vcpkg package names above</p>
+          <p className={`text-xs mt-0.5 ${
+            theme === 'dark' ? 'text-gray-600' : 'text-gray-500'
+          }`}>Add vcpkg package names above</p>
         </div>
       )}
 
-      <div className="text-xs text-gray-500 pt-1.5 border-t border-white/10">
+      <div className={`text-xs pt-1.5 border-t ${
+        theme === 'dark' 
+          ? 'text-gray-500 border-white/10' 
+          : 'text-gray-500 border-gray-300'
+      }`}>
         <p>💡 Enter vcpkg package names or paste multiple (one per line)</p>
       </div>
     </div>

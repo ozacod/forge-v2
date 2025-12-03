@@ -5,10 +5,13 @@ import { DependenciesInput } from './components/DependenciesInput';
 import { HooksConfig as HooksConfigPanel } from './components/HooksConfig';
 import { CLIDownload } from './components/CLIDownload';
 import { Documentation } from './components/Documentation';
+import { ThemeToggle } from './components/ThemeToggle';
+import { useTheme } from './contexts/ThemeContext';
 
 type Tab = 'home' | 'cli' | 'configure' | 'docs';
 
 function App() {
+  const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [error, setError] = useState<string | null>(null);
 
@@ -101,9 +104,13 @@ hooks:
 
 
   return (
-    <div className="min-h-screen grid-pattern">
+    <div className={`min-h-screen transition-colors duration-300 ${theme === 'dark' ? 'bg-black' : ''}`} style={theme === 'light' ? { backgroundColor: 'rgb(252, 249, 243)' } : {}}>
       {/* Header */}
-      <header className="border-b border-white/5 bg-black/20 backdrop-blur-sm sticky top-0 z-40">
+      <header className={`border-b backdrop-blur-sm sticky top-0 z-40 ${
+        theme === 'dark' 
+          ? 'border-white/5 bg-black/20' 
+          : 'border-gray-300'
+      }`} style={theme === 'light' ? { backgroundColor: 'rgba(252, 249, 243, 0.9)' } : {}}>
         <div className="max-w-7xl mx-auto px-6 py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
@@ -112,7 +119,7 @@ hooks:
                 onClick={() => setActiveTab('home')}
                 className="hover:opacity-80 transition-opacity"
               >
-                <img src="/cpx.svg" alt="Cpx" className="w-8 h-8" />
+                <img src="/cpx.svg" alt="Cpx" className="w-12 h-12" />
               </button>
 
               {/* Tabs */}
@@ -121,8 +128,8 @@ hooks:
                   onClick={() => setActiveTab('configure')}
                   className={`px-3 py-1 rounded text-sm font-medium transition-all ${
                     activeTab === 'configure'
-                      ? 'text-white'
-                      : 'text-gray-400 hover:text-white'
+                      ? theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
                     Configure
@@ -131,8 +138,8 @@ hooks:
                   onClick={() => setActiveTab('docs')}
                   className={`px-3 py-1 rounded text-sm font-medium transition-all ${
                     activeTab === 'docs'
-                      ? 'text-white'
-                      : 'text-gray-400 hover:text-white'
+                      ? theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
                   Docs
@@ -142,6 +149,9 @@ hooks:
 
             {/* Actions */}
             <div className="flex items-center gap-3">
+              {/* Theme Toggle */}
+              <ThemeToggle />
+
               {/* Configure tab specific actions */}
             {activeTab === 'configure' && (
                 <button
@@ -160,7 +170,9 @@ hooks:
                 href="https://github.com/ozacod/cpx"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-400 hover:text-white p-2 transition-colors"
+                className={`p-2 transition-colors ${
+                  theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
+                }`}
                 title="View on GitHub"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -177,7 +189,6 @@ hooks:
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
                 Download
-                <span className="text-xs bg-black/20 px-1 py-0.5 rounded font-mono">D</span>
                 </button>
               </div>
           </div>
@@ -199,12 +210,19 @@ hooks:
       )}
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      {activeTab === 'docs' ? (
+        <Documentation />
+      ) : (
+        <main className="max-w-7xl mx-auto px-6 py-8">
         {activeTab === 'home' && (
           <div className="flex flex-col items-center justify-center min-h-[70vh] animate-fade-in">
-            <img src="/cpx.svg" alt="Cpx" className="w-32 h-32 mb-8" />
-            <h1 className="font-display text-5xl font-bold text-white mb-4">cpx</h1>
-            <p className="text-xl text-gray-400 mb-12 text-center max-w-xl">
+            <img src="/cpx.svg" alt="Cpx" className="w-48 h-48 mb-8" />
+            <h1 className={`font-display text-5xl font-bold mb-4 ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>cpx</h1>
+            <p className={`text-xl mb-12 text-center max-w-xl ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+            }`}>
               The modern C++ project generator. Build, configure, and manage your C++ projects with ease.
             </p>
             <div className="flex gap-4">
@@ -219,7 +237,11 @@ hooks:
               </button>
               <button
                 onClick={() => setActiveTab('configure')}
-                className="bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors border border-white/10"
+                className={`px-8 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors border ${
+                  theme === 'dark'
+                    ? 'bg-white/10 hover:bg-white/20 text-white border-white/10'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-900 border-gray-300'
+                }`}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -232,8 +254,6 @@ hooks:
         )}
 
         {activeTab === 'cli' && <CLIDownload />}
-
-        {activeTab === 'docs' && <Documentation />}
 
         {activeTab === 'configure' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -278,15 +298,15 @@ hooks:
             </div>
           </div>
         )}
-      </main>
-
-
+        </main>
+      )}
     </div>
   );
 }
 
 // Cpx YAML Preview Panel Component
 function CpxYamlPreviewPanel({ content }: { content: string }) {
+  const { theme } = useTheme();
   const [expanded, setExpanded] = useState(false);
 
   const copyToClipboard = () => {
@@ -295,14 +315,18 @@ function CpxYamlPreviewPanel({ content }: { content: string }) {
 
   return (
     <div className="card-glass rounded-2xl overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
+      <div className={`flex items-center justify-between px-5 py-3 border-b ${
+        theme === 'dark' ? 'border-white/10' : 'border-gray-300'
+      }`}>
         <div className="flex items-center gap-2">
           <span className="font-mono text-sm text-cyan-400">cpx.yaml</span>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={copyToClipboard}
-            className="p-2 text-gray-500 hover:text-white transition-colors"
+            className={`p-2 transition-colors ${
+              theme === 'dark' ? 'text-gray-500 hover:text-white' : 'text-gray-600 hover:text-gray-900'
+            }`}
             title="Copy to clipboard"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -311,7 +335,9 @@ function CpxYamlPreviewPanel({ content }: { content: string }) {
           </button>
           <button
             onClick={() => setExpanded(!expanded)}
-            className="p-2 text-gray-500 hover:text-white transition-colors"
+            className={`p-2 transition-colors ${
+              theme === 'dark' ? 'text-gray-500 hover:text-white' : 'text-gray-600 hover:text-gray-900'
+            }`}
             title={expanded ? 'Collapse' : 'Expand'}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -329,10 +355,12 @@ function CpxYamlPreviewPanel({ content }: { content: string }) {
           expanded ? 'max-h-[1000px]' : 'max-h-[600px]'
         }`}
       >
-        <code className="text-gray-300">
+        <code className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>
           {content.split('\n').map((line, i) => (
             <div key={i} className="flex">
-              <span className="w-8 text-right pr-4 text-gray-600 select-none">{i + 1}</span>
+              <span className={`w-8 text-right pr-4 select-none ${
+                theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
+              }`}>{i + 1}</span>
               <span className={
                 line.startsWith('#') ? 'text-green-400' :
                 line.includes('hooks:') || line.includes('precommit:') || line.includes('prepush:') ? 'text-purple-400' :

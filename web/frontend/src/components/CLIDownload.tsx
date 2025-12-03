@@ -130,7 +130,7 @@ export function CLIDownload() {
         {/* Windows */}
         <div className="bg-gray-900/50 border border-white/10 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">
-            <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+            <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" viewBox="0 0 24 24" fill="currentColor">
               <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
             </svg>
             <span className="text-white text-sm font-medium">Windows</span>
