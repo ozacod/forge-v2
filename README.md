@@ -19,7 +19,7 @@ cpx is a comprehensive CLI tool for C++ development that simplifies project crea
 - 📦 **vcpkg Integration**: Direct integration with Microsoft vcpkg for dependency management
 - 🏗️ **CMake Presets**: Automatic CMakePresets.json generation for seamless IDE integration
 - 🧪 **Testing Frameworks**: Support for Google Test, Catch2 (auto-downloaded via FetchContent)
-- 🔍 **Code Quality Tools**: Built-in clang-format, clang-tidy, Semgrep, Flawfinder, Cppcheck
+- 🔍 **Code Quality Tools**: Built-in clang-format, clang-tidy, Flawfinder, Cppcheck
 - 🛡️ **Sanitizers**: AddressSanitizer, ThreadSanitizer, MemorySanitizer, UBSan support
 - 🪝 **Git Hooks**: Automatic git hooks installation with configurable pre-commit/pre-push checks
 - 🐳 **Cross-Compilation**: Docker-based CI builds for multiple platforms
@@ -147,11 +147,6 @@ cpx fmt --check             # Check formatting without modifying files
 cpx lint                    # Run clang-tidy static analysis
 cpx lint --fix              # Auto-fix issues where possible
 
-cpx semgrep                 # Run Semgrep security and bug detection
-cpx semgrep --config <cfg>  # Use specific config
-cpx semgrep --json          # JSON output
-cpx semgrep --no-git-ignore # Include untracked files
-
 cpx flawfinder              # Run Flawfinder security analysis
 cpx flawfinder --html       # HTML report
 cpx flawfinder --csv        # CSV output
@@ -233,7 +228,6 @@ hooks:
     - lint
   prepush:
     - test
-    - semgrep
 ```
 
 
@@ -279,7 +273,6 @@ hooks:
     - lint     # Run linter before commit
   prepush:
     - test     # Run tests before push
-    - semgrep  # Run security checks before push
 ```
 
 ### Installation
@@ -295,7 +288,6 @@ cpx hooks install
 - `fmt` - Format code with clang-format
 - `lint` - Run clang-tidy static analysis
 - `test` - Run tests (blocking for pre-push)
-- `semgrep` - Run Semgrep security checks
 - `flawfinder` - Run Flawfinder security analysis
 - `cppcheck` - Run Cppcheck static analysis
 - `check` - Run code check
@@ -304,7 +296,7 @@ cpx hooks install
 
 - **Hooks configured in cpx.yaml** → Creates actual hook files (e.g., `pre-commit`)
 - **Hooks NOT configured** → Creates `.sample` files (e.g., `pre-commit.sample`)
-- **No cpx.yaml** → Uses defaults (fmt, lint for pre-commit; test, semgrep for pre-push)
+- **No cpx.yaml** → Uses defaults (fmt, lint for pre-commit; test for pre-push)
 
 ## 🐳 Cross-Compilation
 
