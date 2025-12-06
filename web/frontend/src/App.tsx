@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { CLIDownload } from './components/CLIDownload';
 import { Documentation } from './components/Documentation';
 import { ThemeToggle } from './components/ThemeToggle';
 import { useTheme } from './contexts/ThemeContext';
@@ -161,15 +160,6 @@ function App() {
                 </div>
               </div>
 
-              <div className={`border-t pt-10 ${theme === 'dark' ? 'border-white/10' : 'border-gray-300'}`}>
-                <h2 className={`text-2xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Download the latest CLI
-                </h2>
-                <p className={`mb-6 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-700'}`}>
-                  Prefer a direct binary? Grab the build for your platform.
-                </p>
-                <CLIDownload />
-              </div>
             </div>
           </div>
         </main>

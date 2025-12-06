@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"github.com/ozacod/cpx/pkg/config"
 	"github.com/ozacod/cpx/internal/pkg/git"
+	"github.com/ozacod/cpx/pkg/config"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +25,7 @@ func NewHooksCmd(loadConfig func(string) (*config.ProjectConfig, error)) *cobra.
 	installCmd := &cobra.Command{
 		Use:   "install",
 		Short: "Install git hooks",
-		Long:  "Install git hooks configured in cpx.yaml.",
+		Long:  "Install git hooks with default configuration (fmt, lint for pre-commit; test for pre-push).",
 		RunE:  runHooksInstall,
 	}
 	cmd.AddCommand(installCmd)
@@ -34,7 +34,8 @@ func NewHooksCmd(loadConfig func(string) (*config.ProjectConfig, error)) *cobra.
 }
 
 func runHooksInstall(cmd *cobra.Command, args []string) error {
-	return git.InstallHooks(hooksLoadConfigFunc, DefaultCfgFile)
+	// Use default hooks - no cpx.yaml needed
+	return git.InstallHooksWithConfig([]string{"fmt", "lint"}, []string{"test"})
 }
 
 // Hooks is kept for backward compatibility (if needed)

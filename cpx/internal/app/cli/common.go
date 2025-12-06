@@ -39,11 +39,44 @@ const Version = "1.0.5"
 // DefaultServer is the default server URL
 const DefaultServer = "https://cpxcpp.vercel.app"
 
-// DefaultCfgFile is the default config file name
-const DefaultCfgFile = "cpx.yaml"
-
 // LockFile is the lock file name
 const LockFile = "cpx.lock"
+
+// CpxConfig represents the project configuration for code generation
+type CpxConfig struct {
+	Package struct {
+		Name        string
+		Version     string
+		CppStandard int
+		Authors     []string
+		Description string
+	}
+	Build struct {
+		SharedLibs  bool
+		ClangFormat string
+		BuildType   string
+		CxxFlags    string
+	}
+	VCS struct {
+		Type string
+	}
+	PackageManager struct {
+		Type string
+	}
+	Testing struct {
+		Framework string
+	}
+	Hooks struct {
+		PreCommit []string
+		PrePush   []string
+	}
+	Features map[string]FeatureConfig
+}
+
+// FeatureConfig represents feature-specific configuration
+type FeatureConfig struct {
+	Dependencies map[string]map[string]interface{}
+}
 
 // PrintSuccess prints a success message
 func PrintSuccess(format string, args ...interface{}) {

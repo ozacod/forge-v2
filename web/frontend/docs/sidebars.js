@@ -27,7 +27,6 @@ export default {
       items: [
         'configuration/global-config',
         'configuration/project-config',
-        'configuration/templates',
         'configuration/hooks',
         'configuration/cmake-presets',
       ],

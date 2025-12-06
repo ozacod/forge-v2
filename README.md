@@ -15,7 +15,7 @@ cpx is a comprehensive CLI tool for C++ development that simplifies project crea
 
 ### Key Features
 
-- 🎯 **Project Templates**: Create projects from templates (default, catch2) downloaded from GitHub
+- 🎯 **Interactive Project Setup**: Create projects with an interactive TUI - choose test frameworks, formatting styles, and more
 - 📦 **vcpkg Integration**: Direct integration with Microsoft vcpkg for dependency management
 - 🏗️ **CMake Presets**: Automatic CMakePresets.json generation for seamless IDE integration
 - 🧪 **Testing Frameworks**: Support for Google Test, Catch2 (auto-downloaded via FetchContent)
@@ -179,24 +179,27 @@ cpx ci init --github-actions # Generate GitHub Actions workflow
 cpx ci init --gitlab        # Generate GitLab CI configuration
 ```
 
-## 📄 Project Templates
+## 🎯 Project Setup
 
-cpx still uses templates behind the scenes, but you no longer pass template files or flags. Run `cpx new`, pick your options in the TUI, and the CLI downloads and applies the correct template automatically.
+Create new projects with the interactive TUI:
 
-### Available Templates
+```bash
+cpx new
+```
 
-- **default**: GoogleTest
-- **catch**: Catch2
-- **no tests**: if you decline a test framework in the TUI
+### TUI Options
 
-### How it works
+The interactive setup lets you configure:
 
-1. Run `cpx new`
-2. Choose executable or library layout
-3. Select a test framework (or none)
-4. Choose git hook checks and formatting style
+1. **Project name** and type (executable or library)
+2. **Test framework**: GoogleTest, Catch2, or none
+3. **Git hooks**: Format, lint, test checks
+4. **Formatting style**: Google, LLVM, Mozilla, WebKit, Microsoft, GNU, Chromium
+5. **C++ standard**: 11, 14, 17, 20, 23
+6. **Package manager**: vcpkg or none
+7. **VCS**: git or none
 
-The template is fetched and filled in with your choices—no `cpx.yaml` required.
+Your choices drive the generated `CMakeLists.txt`, `vcpkg.json`, `.clang-format`, and other project files.
 
 
 ## ⚙️ Configuration
@@ -213,7 +216,7 @@ vcpkg_root: "/path/to/vcpkg"
 
 ### Project Configuration
 
-Project settings are captured through the interactive TUI (`cpx new`). There is no `cpx.yaml` to edit—your answers drive the generated files.
+Project settings are configured through the interactive TUI (`cpx new`). Your answers drive the generated files.
 
 **vcpkg.json** (auto-generated):
 ```json

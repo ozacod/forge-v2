@@ -1,6 +1,6 @@
 # Git Hooks Configuration
 
-Git hooks are configured through the interactive TUI (`cpx new`). There is no `cpx.yaml` to edit—pick the checks you want when creating the project.
+Git hooks are configured through the interactive TUI (`cpx new`). Pick the checks you want when creating the project.
 
 ## Choose hooks in the TUI
 

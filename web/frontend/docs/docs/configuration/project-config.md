@@ -1,6 +1,6 @@
 # Project Configuration
 
-Project configuration is captured through the interactive TUI (`cpx new`). You no longer edit or supply a `cpx.yaml` file—the CLI generates everything it needs based on your answers.
+Project configuration is done entirely through the interactive TUI (`cpx new`). The CLI generates all necessary files based on your answers.
 
 ## vcpkg.json
 

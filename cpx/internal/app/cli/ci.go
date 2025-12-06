@@ -182,11 +182,11 @@ func findProjectRoot() (string, error) {
 
 	// Walk up the directory tree looking for project markers
 	for {
-		// Check for cpx.ci or cpx.yaml
+		// Check for cpx.ci or CMakeLists.txt (project markers)
 		if _, err := os.Stat(filepath.Join(dir, "cpx.ci")); err == nil {
 			return dir, nil
 		}
-		if _, err := os.Stat(filepath.Join(dir, DefaultCfgFile)); err == nil {
+		if _, err := os.Stat(filepath.Join(dir, "CMakeLists.txt")); err == nil {
 			return dir, nil
 		}
 

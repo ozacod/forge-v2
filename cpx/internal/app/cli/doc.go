@@ -1,12 +1,13 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 
-	"github.com/ozacod/cpx/pkg/config"
 	"github.com/spf13/cobra"
 )
 
@@ -35,16 +36,49 @@ func Doc(args []string) {
 	// Kept for compatibility during migration
 }
 
+// getProjectInfo reads project name and version from CMakeLists.txt or vcpkg.json
+func getProjectInfo() (name string, version string) {
+	// Default values
+	name = "Project"
+	version = "0.1.0"
+
+	// Try to read from CMakeLists.txt
+	if cmakeContent, err := os.ReadFile("CMakeLists.txt"); err == nil {
+		// Extract project name
+		nameRegex := regexp.MustCompile(`project\s*\(\s*(\w+)`)
+		if matches := nameRegex.FindStringSubmatch(string(cmakeContent)); len(matches) > 1 {
+			name = matches[1]
+		}
+		// Extract version
+		versionRegex := regexp.MustCompile(`VERSION\s+(\d+\.\d+\.\d+)`)
+		if matches := versionRegex.FindStringSubmatch(string(cmakeContent)); len(matches) > 1 {
+			version = matches[1]
+		}
+	}
+
+	// Also try vcpkg.json as fallback for name
+	if vcpkgData, err := os.ReadFile("vcpkg.json"); err == nil {
+		var vcpkg map[string]interface{}
+		if json.Unmarshal(vcpkgData, &vcpkg) == nil {
+			if n, ok := vcpkg["name"].(string); ok && n != "" {
+				name = n
+			}
+			if v, ok := vcpkg["version"].(string); ok && v != "" {
+				version = v
+			}
+		}
+	}
+
+	return name, version
+}
+
 func generateDocs(openBrowser bool) error {
 	// Check if Doxygen is available
 	if _, err := exec.LookPath("doxygen"); err != nil {
 		return fmt.Errorf("doxygen not found. Please install it first:\n  macOS: brew install doxygen\n  Ubuntu: sudo apt install doxygen")
 	}
 
-	cfg, err := config.LoadProject(DefaultCfgFile)
-	if err != nil {
-		return err
-	}
+	projectName, projectVersion := getProjectInfo()
 
 	fmt.Printf("%s Generating documentation...%s\n", Cyan, Reset)
 
@@ -60,7 +94,7 @@ GENERATE_HTML          = YES
 GENERATE_LATEX         = NO
 HTML_OUTPUT            = html
 USE_MDFILE_AS_MAINPAGE = README.md
-`, cfg.Package.Name, cfg.Package.Version)
+`, projectName, projectVersion)
 
 		if err := os.WriteFile("Doxyfile", []byte(doxyContent), 0644); err != nil {
 			return fmt.Errorf("failed to create Doxyfile: %w", err)

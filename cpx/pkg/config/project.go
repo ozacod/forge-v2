@@ -7,7 +7,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// ProjectConfig represents the cpx.yaml structure
+// Note: Project configuration is done through TUI only (cpx new).
+// There is no cpx.yaml file - all settings come from the interactive prompts.
+
+// ProjectConfig represents the project configuration structure
 type ProjectConfig struct {
 	Package struct {
 		Name        string   `yaml:"name"`
@@ -67,35 +70,6 @@ type CIBuild struct {
 	Jobs         int      `yaml:"jobs"`
 	CMakeArgs    []string `yaml:"cmake_args"`
 	BuildArgs    []string `yaml:"build_args"`
-}
-
-// LoadProject loads the project configuration from cpx.yaml
-func LoadProject(path string) (*ProjectConfig, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read %s: %w", path, err)
-	}
-
-	var config ProjectConfig
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse %s: %w", path, err)
-	}
-
-	return &config, nil
-}
-
-// SaveProject saves the project configuration to cpx.yaml
-func SaveProject(config *ProjectConfig, path string) error {
-	data, err := yaml.Marshal(config)
-	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
-	}
-
-	if err := os.WriteFile(path, data, 0644); err != nil {
-		return fmt.Errorf("failed to write %s: %w", path, err)
-	}
-
-	return nil
 }
 
 // LoadCI loads the CI configuration from cpx.ci

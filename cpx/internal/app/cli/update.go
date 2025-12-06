@@ -38,7 +38,7 @@ func Update(args []string) {
 }
 
 func updateDependencies(specificLib string) error {
-	// Dependencies are managed in vcpkg.json, not cpx.yaml
+	// Dependencies are managed in vcpkg.json
 	// Read dependencies from vcpkg.json
 	deps, err := getDependenciesFromVcpkgJson(".")
 	if err != nil {

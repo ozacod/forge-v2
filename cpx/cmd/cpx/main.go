@@ -6,25 +6,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/ozacod/cpx/internal/app/cli"
 	"github.com/ozacod/cpx/internal/app/cli/root"
-	"github.com/ozacod/cpx/internal/pkg/git"
-	"github.com/ozacod/cpx/internal/pkg/template"
 	"github.com/ozacod/cpx/internal/pkg/templates"
 	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 	"github.com/ozacod/cpx/pkg/config"
-
-	"gopkg.in/yaml.v3"
 )
 
 const (
-	Version        = cli.Version
-	DefaultServer  = cli.DefaultServer
-	DefaultCfgFile = cli.DefaultCfgFile
-	LockFile       = cli.LockFile
+	Version       = cli.Version
+	DefaultServer = cli.DefaultServer
+	LockFile      = cli.LockFile
 )
 
 var vcpkgClient *vcpkg.Client
@@ -99,94 +93,6 @@ func main() {
 	rootCmd.AddCommand(cli.NewTestCmd(setupVcpkgEnv))
 	rootCmd.AddCommand(cli.NewCleanCmd())
 	rootCmd.AddCommand(cli.NewNewCmd(
-		func(path string) (*cli.CpxConfig, error) {
-			cfg, err := loadConfig(path)
-			if err != nil {
-				return nil, err
-			}
-			// Convert main.CpxConfig to cli.CpxConfig
-			result := &cli.CpxConfig{}
-			result.Package.Name = cfg.Package.Name
-			result.Package.Version = cfg.Package.Version
-			result.Package.CppStandard = cfg.Package.CppStandard
-			result.Package.Authors = cfg.Package.Authors
-			result.Package.Description = cfg.Package.Description
-			result.Build.SharedLibs = cfg.Build.SharedLibs
-			result.Build.ClangFormat = cfg.Build.ClangFormat
-			result.Build.BuildType = cfg.Build.BuildType
-			result.Build.CxxFlags = cfg.Build.CxxFlags
-			result.Testing.Framework = cfg.Testing.Framework
-			result.Hooks.PreCommit = cfg.Hooks.PreCommit
-			result.Hooks.PrePush = cfg.Hooks.PrePush
-			if cfg.Features != nil {
-				result.Features = make(map[string]config.FeatureConfig)
-				for k, v := range cfg.Features {
-					result.Features[k] = config.FeatureConfig{
-						Dependencies: v.Dependencies,
-					}
-				}
-			}
-			return result, nil
-		},
-		getVcpkgPath,
-		setupVcpkgProject,
-		func(targetDir string, cfg *cli.CpxConfig, projectName string, isLib bool) error {
-			// Convert cli.CpxConfig to main.CpxConfig
-			mainCfg := &CpxConfig{}
-			mainCfg.Package.Name = cfg.Package.Name
-			mainCfg.Package.Version = cfg.Package.Version
-			mainCfg.Package.CppStandard = cfg.Package.CppStandard
-			mainCfg.Package.Authors = cfg.Package.Authors
-			mainCfg.Package.Description = cfg.Package.Description
-			mainCfg.Build.SharedLibs = cfg.Build.SharedLibs
-			mainCfg.Build.ClangFormat = cfg.Build.ClangFormat
-			mainCfg.Build.BuildType = cfg.Build.BuildType
-			mainCfg.Build.CxxFlags = cfg.Build.CxxFlags
-			mainCfg.VCS.Type = cfg.VCS.Type
-			mainCfg.PackageManager.Type = cfg.PackageManager.Type
-			mainCfg.Testing.Framework = cfg.Testing.Framework
-			mainCfg.Hooks.PreCommit = cfg.Hooks.PreCommit
-			mainCfg.Hooks.PrePush = cfg.Hooks.PrePush
-			if cfg.Features != nil {
-				mainCfg.Features = make(map[string]config.FeatureConfig)
-				for k, v := range cfg.Features {
-					mainCfg.Features[k] = config.FeatureConfig{
-						Dependencies: v.Dependencies,
-					}
-				}
-			}
-			return generateVcpkgProjectFilesFromConfig(targetDir, mainCfg, projectName, isLib)
-		}))
-	rootCmd.AddCommand(cli.NewCreateCmd(
-		func(path string) (*cli.CpxConfig, error) {
-			cfg, err := loadConfig(path)
-			if err != nil {
-				return nil, err
-			}
-			// Convert main.CpxConfig to cli.CpxConfig
-			result := &cli.CpxConfig{}
-			result.Package.Name = cfg.Package.Name
-			result.Package.Version = cfg.Package.Version
-			result.Package.CppStandard = cfg.Package.CppStandard
-			result.Package.Authors = cfg.Package.Authors
-			result.Package.Description = cfg.Package.Description
-			result.Build.SharedLibs = cfg.Build.SharedLibs
-			result.Build.ClangFormat = cfg.Build.ClangFormat
-			result.Build.BuildType = cfg.Build.BuildType
-			result.Build.CxxFlags = cfg.Build.CxxFlags
-			result.Testing.Framework = cfg.Testing.Framework
-			result.Hooks.PreCommit = cfg.Hooks.PreCommit
-			result.Hooks.PrePush = cfg.Hooks.PrePush
-			if cfg.Features != nil {
-				result.Features = make(map[string]config.FeatureConfig)
-				for k, v := range cfg.Features {
-					result.Features[k] = config.FeatureConfig{
-						Dependencies: v.Dependencies,
-					}
-				}
-			}
-			return result, nil
-		},
 		getVcpkgPath,
 		setupVcpkgProject,
 		func(targetDir string, cfg *cli.CpxConfig, projectName string, isLib bool) error {
@@ -232,35 +138,7 @@ func main() {
 	rootCmd.AddCommand(cli.NewUpgradeCmd())
 	rootCmd.AddCommand(cli.NewConfigCmd())
 	rootCmd.AddCommand(cli.NewCICmd())
-	rootCmd.AddCommand(cli.NewHooksCmd(func(path string) (*config.ProjectConfig, error) {
-		cfg, err := loadConfig(path)
-		if err != nil {
-			return nil, err
-		}
-		// Convert CpxConfig to config.ProjectConfig
-		projectCfg := &config.ProjectConfig{}
-		projectCfg.Package.Name = cfg.Package.Name
-		projectCfg.Package.Version = cfg.Package.Version
-		projectCfg.Package.CppStandard = cfg.Package.CppStandard
-		projectCfg.Package.Authors = cfg.Package.Authors
-		projectCfg.Package.Description = cfg.Package.Description
-		projectCfg.Build.SharedLibs = cfg.Build.SharedLibs
-		projectCfg.Build.ClangFormat = cfg.Build.ClangFormat
-		projectCfg.Build.BuildType = cfg.Build.BuildType
-		projectCfg.Build.CxxFlags = cfg.Build.CxxFlags
-		projectCfg.Testing.Framework = cfg.Testing.Framework
-		projectCfg.Hooks.PreCommit = cfg.Hooks.PreCommit
-		projectCfg.Hooks.PrePush = cfg.Hooks.PrePush
-		if cfg.Features != nil {
-			projectCfg.Features = make(map[string]config.FeatureConfig)
-			for k, v := range cfg.Features {
-				projectCfg.Features[k] = config.FeatureConfig{
-					Dependencies: v.Dependencies,
-				}
-			}
-		}
-		return projectCfg, nil
-	}))
+	rootCmd.AddCommand(cli.NewHooksCmd(nil))
 	rootCmd.AddCommand(cli.NewUpdateCmd())
 
 	// Handle vcpkg passthrough for unknown commands
@@ -304,167 +182,6 @@ func contains(slice []string, item string) bool {
 }
 
 // printUsage is no longer needed - cobra handles help automatically
-
-// cmdCreate is no longer needed - use cli.NewCreateCmd instead
-
-func createProject(projectName, templatePath string, isLib bool) error {
-	if !regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`).MatchString(projectName) {
-		return fmt.Errorf("invalid project name '%s': must start with letter and contain only letters, numbers, underscores, or hyphens", projectName)
-	}
-
-	if _, err := os.Stat(projectName); err == nil {
-		return fmt.Errorf("directory '%s' already exists", projectName)
-	}
-
-	if err := os.MkdirAll(projectName, 0755); err != nil {
-		return fmt.Errorf("failed to create directory '%s': %w", projectName, err)
-	}
-
-	fmt.Printf("%s Creating project '%s'...%s\n", Cyan, projectName, Reset)
-
-	var cfg *CpxConfig
-	if templatePath != "" {
-		actualTemplatePath := templatePath
-		if !strings.Contains(templatePath, string(filepath.Separator)) && !strings.Contains(templatePath, "/") && !strings.HasSuffix(templatePath, ".yaml") && !strings.HasSuffix(templatePath, ".yml") {
-			tempDir := filepath.Join(os.TempDir(), "cpx-templates")
-			if err := os.MkdirAll(tempDir, 0755); err != nil {
-				return fmt.Errorf("failed to create temp directory: %w", err)
-			}
-			actualTemplatePath = filepath.Join(tempDir, templatePath+".yaml")
-
-			fmt.Printf("%s Downloading template '%s' from GitHub...%s\n", Cyan, templatePath, Reset)
-			if err := template.DownloadFromGitHub(templatePath+".yaml", actualTemplatePath); err != nil {
-				return fmt.Errorf("failed to download template '%s' from GitHub: %w", templatePath, err)
-			}
-			fmt.Printf("%s Using template: %s%s\n", Cyan, templatePath, Reset)
-		} else {
-			fmt.Printf("%s Using template: %s%s\n", Cyan, templatePath, Reset)
-		}
-
-		var err error
-		cfg, err = loadConfig(actualTemplatePath)
-		if err != nil {
-			return fmt.Errorf("failed to load template file '%s': %w", actualTemplatePath, err)
-		}
-		cfg.Package.Name = projectName
-	} else {
-		tempDir := filepath.Join(os.TempDir(), "cpx-templates")
-		if err := os.MkdirAll(tempDir, 0755); err != nil {
-			return fmt.Errorf("failed to create temp directory: %w", err)
-		}
-		defaultTemplatePath := filepath.Join(tempDir, "default.yaml")
-
-		fmt.Printf("%s Downloading default template from GitHub...%s\n", Cyan, Reset)
-		if err := template.DownloadFromGitHub("default.yaml", defaultTemplatePath); err != nil {
-			fmt.Printf("%s  Could not load default template, using built-in defaults...%s\n", Yellow, Reset)
-			cfg = &CpxConfig{}
-			cfg.Package.Name = projectName
-			cfg.Package.Version = "0.1.0"
-			cfg.Package.CppStandard = 17
-			cfg.Build.SharedLibs = false
-			cfg.Build.ClangFormat = "Google"
-			cfg.Testing.Framework = "googletest"
-			cfg.Hooks.PreCommit = []string{"fmt", "lint"}
-			cfg.Hooks.PrePush = []string{"test"}
-		} else {
-			cfg, err = loadConfig(defaultTemplatePath)
-			if err != nil {
-				return fmt.Errorf("failed to load default template: %w", err)
-			}
-			cfg.Package.Name = projectName
-		}
-	}
-
-	if cfg.Build.SharedLibs {
-		isLib = true
-	}
-
-	fmt.Printf("%s Initializing git repository...%s\n", Cyan, Reset)
-	gitCmd := exec.Command("git", "init")
-	gitCmd.Dir = projectName
-	if err := gitCmd.Run(); err != nil {
-		fmt.Printf("%s  Warning: Failed to initialize git repository: %v%s\n", Yellow, err, Reset)
-	} else {
-		fmt.Printf("%s Initialized git repository%s\n", Green, Reset)
-	}
-
-	fmt.Printf("%s Created project '%s'%s\n", Green, projectName, Reset)
-	fmt.Printf("   Directory: %s\n", projectName)
-
-	dependencies := cfg.Dependencies
-	if dependencies == nil {
-		dependencies = []string{}
-	}
-	if err := setupVcpkgProject(projectName, projectName, isLib, dependencies); err != nil {
-		return fmt.Errorf("failed to set up vcpkg project: %w", err)
-	}
-
-	fmt.Printf("\n%s Generating project files...%s\n", Cyan, Reset)
-	if err := generateVcpkgProjectFilesFromConfig(projectName, cfg, projectName, isLib); err != nil {
-		return fmt.Errorf("failed to generate project files: %w", err)
-	}
-
-	configCopy := *cfg
-	configCopy.Dependencies = nil
-	data, err := yaml.Marshal(&configCopy)
-	if err == nil {
-		header := "# cpx.yaml - C++ Project Configuration\n# Dependencies are managed in vcpkg.json (use 'vcpkg add port <package>')\n\n"
-		data = append([]byte(header), data...)
-		cpxYamlPath := filepath.Join(projectName, DefaultCfgFile)
-		if err := os.WriteFile(cpxYamlPath, data, 0644); err == nil {
-			fmt.Printf("%s   cpx.yaml%s\n", Green, Reset)
-		}
-	}
-
-	// Install hooks if configured
-	if len(cfg.Hooks.PreCommit) > 0 || len(cfg.Hooks.PrePush) > 0 {
-		fmt.Printf("\n%s Installing git hooks...%s\n", Cyan, Reset)
-		originalDir, _ := os.Getwd()
-		defer os.Chdir(originalDir) // Restore original directory
-
-		if err := os.Chdir(projectName); err == nil {
-			if err := git.InstallHooks(func(path string) (*config.ProjectConfig, error) {
-				cfg, err := loadConfig(path)
-				if err != nil {
-					return nil, err
-				}
-				projectCfg := &config.ProjectConfig{}
-				projectCfg.Package.Name = cfg.Package.Name
-				projectCfg.Package.Version = cfg.Package.Version
-				projectCfg.Package.CppStandard = cfg.Package.CppStandard
-				projectCfg.Package.Authors = cfg.Package.Authors
-				projectCfg.Package.Description = cfg.Package.Description
-				projectCfg.Build.SharedLibs = cfg.Build.SharedLibs
-				projectCfg.Build.ClangFormat = cfg.Build.ClangFormat
-				projectCfg.Build.BuildType = cfg.Build.BuildType
-				projectCfg.Build.CxxFlags = cfg.Build.CxxFlags
-				projectCfg.Testing.Framework = cfg.Testing.Framework
-				projectCfg.Hooks.PreCommit = cfg.Hooks.PreCommit
-				projectCfg.Hooks.PrePush = cfg.Hooks.PrePush
-				if cfg.Features != nil {
-					projectCfg.Features = make(map[string]config.FeatureConfig)
-					for k, v := range cfg.Features {
-						projectCfg.Features[k] = config.FeatureConfig{
-							Dependencies: v.Dependencies,
-						}
-					}
-				}
-				return projectCfg, nil
-			}, DefaultCfgFile); err != nil {
-				// Non-fatal error, just warn
-				fmt.Printf("%s  Warning: Failed to install hooks: %v%s\n", Yellow, err, Reset)
-			}
-		}
-	}
-
-	fmt.Printf("\n%s Project '%s' ready!%s\n\n", Green, projectName, Reset)
-	fmt.Printf("Next steps:\n")
-	fmt.Printf("  cd %s\n", projectName)
-	fmt.Printf("  %scpx build%s       # Compile the project\n", Cyan, Reset)
-	fmt.Printf("  %scpx run%s         # Build and run\n", Cyan, Reset)
-
-	return nil
-}
 
 func setupVcpkgProject(targetDir, _ string, _ bool, dependencies []string) error {
 	vcpkgPath, err := getVcpkgPath()
@@ -680,8 +397,4 @@ func getDependenciesFromVcpkgJsonLocal(projectDir string) ([]string, error) {
 	}
 
 	return dependencies, nil
-}
-
-func loadConfig(path string) (*CpxConfig, error) {
-	return config.LoadProject(path)
 }

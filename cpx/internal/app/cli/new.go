@@ -9,19 +9,15 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/ozacod/cpx/internal/app/cli/tui"
-	"github.com/ozacod/cpx/internal/pkg/template"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
-var newLoadConfigFunc func(string) (*CpxConfig, error)
 var newGetVcpkgPathFunc func() (string, error)
 var newSetupVcpkgProjectFunc func(string, string, bool, []string) error
 var newGenerateVcpkgProjectFilesFromConfigFunc func(string, *CpxConfig, string, bool) error
 
 // NewNewCmd creates the new command with interactive TUI
-func NewNewCmd(loadConfig func(string) (*CpxConfig, error), getVcpkgPath func() (string, error), setupVcpkgProject func(string, string, bool, []string) error, generateVcpkgProjectFilesFromConfig func(string, *CpxConfig, string, bool) error) *cobra.Command {
-	newLoadConfigFunc = loadConfig
+func NewNewCmd(getVcpkgPath func() (string, error), setupVcpkgProject func(string, string, bool, []string) error, generateVcpkgProjectFilesFromConfig func(string, *CpxConfig, string, bool) error) *cobra.Command {
 	newGetVcpkgPathFunc = getVcpkgPath
 	newSetupVcpkgProjectFunc = setupVcpkgProject
 	newGenerateVcpkgProjectFilesFromConfigFunc = generateVcpkgProjectFilesFromConfig
@@ -60,10 +56,10 @@ func runNew(cmd *cobra.Command, args []string) error {
 	config := finalModel.GetConfig()
 
 	// Create the project with the configuration
-	return createProjectFromTUI(config, newLoadConfigFunc, newGetVcpkgPathFunc, newSetupVcpkgProjectFunc, newGenerateVcpkgProjectFilesFromConfigFunc)
+	return createProjectFromTUI(config, newGetVcpkgPathFunc, newSetupVcpkgProjectFunc, newGenerateVcpkgProjectFilesFromConfigFunc)
 }
 
-func createProjectFromTUI(config tui.ProjectConfig, loadConfig func(string) (*CpxConfig, error), getVcpkgPath func() (string, error), setupVcpkgProject func(string, string, bool, []string) error, generateVcpkgProjectFilesFromConfig func(string, *CpxConfig, string, bool) error) error {
+func createProjectFromTUI(config tui.ProjectConfig, getVcpkgPath func() (string, error), setupVcpkgProject func(string, string, bool, []string) error, generateVcpkgProjectFilesFromConfig func(string, *CpxConfig, string, bool) error) error {
 	projectName := config.Name
 
 	// Check if directory already exists
@@ -76,75 +72,25 @@ func createProjectFromTUI(config tui.ProjectConfig, loadConfig func(string) (*Cp
 		return fmt.Errorf("failed to create directory '%s': %w", projectName, err)
 	}
 
-	// Download the default template as a base
-	tempDir := filepath.Join(os.TempDir(), "cpx-templates")
-	if err := os.MkdirAll(tempDir, 0755); err != nil {
-		return fmt.Errorf("failed to create temp directory: %w", err)
-	}
+	// Create configuration from TUI choices (no external templates needed)
+	cfg := &CpxConfig{}
+	cfg.Package.Name = projectName
+	cfg.Package.Version = "0.1.0"
+	cfg.Package.CppStandard = config.CppStandard
+	cfg.Build.SharedLibs = config.IsLibrary
+	cfg.Build.ClangFormat = config.ClangFormat
+	cfg.Testing.Framework = config.TestFramework
+	cfg.VCS.Type = config.VCS
+	cfg.PackageManager.Type = config.PackageManager
 
-	// Determine which template to use based on test framework
-	templateName := "default.yaml"
-	if config.TestFramework == "catch2" {
-		templateName = "catch.yaml"
-	}
-
-	defaultTemplatePath := filepath.Join(tempDir, templateName)
-
-	// Try to download from GitHub
-	var cfg *CpxConfig
-	if err := template.DownloadFromGitHub(templateName, defaultTemplatePath); err != nil {
-		// If download fails, use built-in defaults
-		cfg = &CpxConfig{}
-		cfg.Package.Name = projectName
-		cfg.Package.Version = "0.1.0"
-		cfg.Package.CppStandard = config.CppStandard
-		cfg.Build.SharedLibs = config.IsLibrary
-		cfg.Build.ClangFormat = config.ClangFormat
-		cfg.Testing.Framework = config.TestFramework
-
-		// Set hooks
-		if len(config.GitHooks) > 0 {
-			for _, hook := range config.GitHooks {
-				if hook == "fmt" || hook == "lint" {
-					cfg.Hooks.PreCommit = append(cfg.Hooks.PreCommit, hook)
-				}
-				if hook == "test" {
-					cfg.Hooks.PrePush = append(cfg.Hooks.PrePush, hook)
-				}
+	// Set hooks
+	if len(config.GitHooks) > 0 {
+		for _, hook := range config.GitHooks {
+			if hook == "fmt" || hook == "lint" {
+				cfg.Hooks.PreCommit = append(cfg.Hooks.PreCommit, hook)
 			}
-		}
-	} else {
-		// Successfully downloaded, now load and customize it
-		var err error
-		cfg, err = loadConfig(defaultTemplatePath)
-		if err != nil {
-			return fmt.Errorf("failed to load template: %w", err)
-		}
-
-		// Override with user choices
-		cfg.Package.Name = projectName
-		cfg.Package.CppStandard = config.CppStandard
-		cfg.Build.SharedLibs = config.IsLibrary
-
-		if config.ClangFormat != "" {
-			cfg.Build.ClangFormat = config.ClangFormat
-		}
-
-		if config.TestFramework != "none" {
-			cfg.Testing.Framework = config.TestFramework
-		}
-
-		// Set hooks
-		cfg.Hooks.PreCommit = []string{}
-		cfg.Hooks.PrePush = []string{}
-		if len(config.GitHooks) > 0 {
-			for _, hook := range config.GitHooks {
-				if hook == "fmt" || hook == "lint" {
-					cfg.Hooks.PreCommit = append(cfg.Hooks.PreCommit, hook)
-				}
-				if hook == "test" {
-					cfg.Hooks.PrePush = append(cfg.Hooks.PrePush, hook)
-				}
+			if hook == "test" {
+				cfg.Hooks.PrePush = append(cfg.Hooks.PrePush, hook)
 			}
 		}
 	}
@@ -175,16 +121,6 @@ func createProjectFromTUI(config tui.ProjectConfig, loadConfig func(string) (*Cp
 		if err := os.MkdirAll(dirPath, 0755); err != nil {
 			return fmt.Errorf("failed to create directory '%s': %w", dirPath, err)
 		}
-	}
-
-	// Write cpx.yaml
-	cpxYamlPath := filepath.Join(projectName, "cpx.yaml")
-	yamlData, err := yaml.Marshal(cfg)
-	if err != nil {
-		return fmt.Errorf("failed to marshal cpx.yaml: %w", err)
-	}
-	if err := os.WriteFile(cpxYamlPath, yamlData, 0644); err != nil {
-		return fmt.Errorf("failed to write cpx.yaml: %w", err)
 	}
 
 	// Create main source file

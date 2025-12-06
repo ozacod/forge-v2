@@ -70,7 +70,7 @@ set +e  # Don't exit on error for project creation checks
 cpx create test_default --template default > /tmp/cpx_test_output.log 2>&1
 create_exit=$?
 if [ $create_exit -eq 0 ]; then
-    if [ -d "test_default" ] && [ -f "test_default/CMakeLists.txt" ] && [ -f "test_default/cpx.yaml" ]; then
+    if [ -d "test_default" ] && [ -f "test_default/CMakeLists.txt" ]; then
         echo -e "${GREEN}✓ Default template project created${NC}\n"
         ((PASSED++))
     else
@@ -89,7 +89,7 @@ echo -e "${YELLOW}Creating project with catch template...${NC}"
 cpx create test_catch --template catch > /tmp/cpx_test_output.log 2>&1
 create_exit=$?
 if [ $create_exit -eq 0 ]; then
-    if [ -d "test_catch" ] && [ -f "test_catch/CMakeLists.txt" ] && [ -f "test_catch/cpx.yaml" ]; then
+    if [ -d "test_catch" ] && [ -f "test_catch/CMakeLists.txt" ]; then
         echo -e "${GREEN}✓ Catch template project created${NC}\n"
         ((PASSED++))
     else
