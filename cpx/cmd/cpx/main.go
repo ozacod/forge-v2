@@ -138,7 +138,7 @@ func main() {
 	rootCmd.AddCommand(cli.NewUpgradeCmd())
 	rootCmd.AddCommand(cli.NewConfigCmd())
 	rootCmd.AddCommand(cli.NewCICmd())
-	rootCmd.AddCommand(cli.NewHooksCmd(nil))
+	rootCmd.AddCommand(cli.NewHooksCmd())
 	rootCmd.AddCommand(cli.NewUpdateCmd())
 
 	// Handle vcpkg passthrough for unknown commands

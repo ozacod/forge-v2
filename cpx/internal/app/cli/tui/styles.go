@@ -7,7 +7,6 @@ var (
 	cyan    = lipgloss.Color("#00D4FF")
 	green   = lipgloss.Color("#00FF00")
 	red     = lipgloss.Color("#FF0000")
-	gray    = lipgloss.Color("#6B7280")
 	white   = lipgloss.Color("#FFFFFF")
 	dimGray = lipgloss.Color("#4B5563")
 

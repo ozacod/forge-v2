@@ -6,12 +6,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var hooksLoadConfigFunc func(string) (*config.ProjectConfig, error)
-
 // NewHooksCmd creates the hooks command
-func NewHooksCmd(loadConfig func(string) (*config.ProjectConfig, error)) *cobra.Command {
-	hooksLoadConfigFunc = loadConfig
-
+func NewHooksCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "hooks",
 		Short: "Install git hooks",

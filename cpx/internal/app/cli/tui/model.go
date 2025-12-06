@@ -76,7 +76,6 @@ type Model struct {
 
 	// Current question state
 	currentQuestion string
-	showingAnswer   bool
 
 	// Options for selection steps
 	projectTypeOptions    []string

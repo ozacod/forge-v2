@@ -108,58 +108,6 @@ func updateSummary(analysis *ComprehensiveAnalysis, toolResults ToolResults) {
 	}
 }
 
-// findMatchingBrace finds the matching closing brace/bracket for the first opening brace/bracket
-func findMatchingBrace(s string) int {
-	if len(s) == 0 {
-		return -1
-	}
-
-	var openChar, closeChar byte
-	if s[0] == '{' {
-		openChar, closeChar = '{', '}'
-	} else if s[0] == '[' {
-		openChar, closeChar = '[', ']'
-	} else {
-		return -1
-	}
-
-	depth := 0
-	inString := false
-	escape := false
-
-	for i, char := range s {
-		if escape {
-			escape = false
-			continue
-		}
-
-		if char == '\\' {
-			escape = true
-			continue
-		}
-
-		if char == '"' {
-			inString = !inString
-			continue
-		}
-
-		if inString {
-			continue
-		}
-
-		if char == rune(openChar) {
-			depth++
-		} else if char == rune(closeChar) {
-			depth--
-			if depth == 0 {
-				return i
-			}
-		}
-	}
-
-	return -1
-}
-
 // discoverSourceDirectories finds source directories to scan
 // Looks for common directories like src/, include/, lib/, etc.
 // Respects .gitignore by checking if directories contain git-tracked files
