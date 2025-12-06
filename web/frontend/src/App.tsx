@@ -17,8 +17,7 @@ function App() {
     setTimeout(() => setCopiedText(null), 1600);
   };
 
-  const installCommand = 'curl -fsSL https://raw.githubusercontent.com/ozacod/cpx/main/install.sh | bash';
-  const newProjectCommand = 'cpx new';
+  const installCommand = 'curl -fsSL https://raw.githubusercontent.com/ozacod/cpx/main/install.sh | sh';
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${theme === 'dark' ? 'bg-black' : ''}`} style={theme === 'light' ? { backgroundColor: 'rgb(252, 249, 243)' } : {}}>
@@ -134,8 +133,7 @@ function App() {
                 </a>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Install */}
+              <div className="space-y-6">
                 <div
                   className={`rounded-2xl border p-5 text-left transition-colors ${
                     theme === 'dark'
@@ -143,10 +141,12 @@ function App() {
                       : 'bg-gray-100 border-gray-300 hover:bg-gray-200'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-cyan-300' : 'text-cyan-700'}`}>Install cpx</span>
-                    </div>
+                  <div className="flex items-start justify-between gap-4">
+                    <code className={`block font-mono text-sm break-all ${
+                      theme === 'dark' ? 'text-cyan-400' : 'text-cyan-700'
+                    }`}>
+                      {installCommand}
+                    </code>
                     <button
                       onClick={() => copyCommand(installCommand)}
                       className={`text-xs px-2 py-1 rounded ${
@@ -158,58 +158,15 @@ function App() {
                       {copiedText === installCommand ? 'Copied' : 'Copy'}
                     </button>
                   </div>
-                  <code className={`block font-mono text-sm break-all ${
-                    theme === 'dark' ? 'text-cyan-400' : 'text-cyan-700'
-                  }`}>
-                    {installCommand}
-                  </code>
-                  <p className={`mt-3 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-700'}`}>
-                    Installs the CLI and all required tooling. Works on macOS and Linux.
-                  </p>
-                </div>
-
-                {/* Launch TUI */}
-                <div
-                  className={`rounded-2xl border p-5 text-left transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-white/5 border-white/10 hover:bg-white/10'
-                      : 'bg-gray-100 border-gray-300 hover:bg-gray-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-cyan-300' : 'text-cyan-700'}`}>Create via TUI</span>
-                    </div>
-                    <button
-                      onClick={() => copyCommand(newProjectCommand)}
-                      className={`text-xs px-2 py-1 rounded ${
-                        theme === 'dark'
-                          ? 'bg-white/10 text-white hover:bg-white/20'
-                          : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      {copiedText === newProjectCommand ? 'Copied' : 'Copy'}
-                    </button>
-                  </div>
-                  <code className={`block font-mono text-sm ${
-                    theme === 'dark' ? 'text-cyan-400' : 'text-cyan-700'
-                  }`}>
-                    {newProjectCommand}
-                  </code>
-                  <ul className={`mt-3 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-800'} space-y-1 text-left`}>
-                    <li>• Choose executable or library layout</li>
-                    <li>• Pick test framework and git hooks</li>
-                    <li>• Generates CMake presets, CI stubs, and vcpkg manifest</li>
-                  </ul>
                 </div>
               </div>
 
-              <div className="border-t border-white/10 pt-10">
+              <div className={`border-t pt-10 ${theme === 'dark' ? 'border-white/10' : 'border-gray-300'}`}>
                 <h2 className={`text-2xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   Download the latest CLI
                 </h2>
                 <p className={`mb-6 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-700'}`}>
-                  Prefer a direct binary? Grab the build for your platform and start the TUI with <span className="font-mono text-cyan-500">cpx new</span>.
+                  Prefer a direct binary? Grab the build for your platform.
                 </p>
                 <CLIDownload />
               </div>
