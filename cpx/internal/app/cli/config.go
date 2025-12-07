@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewConfigCmd creates the config command
-func NewConfigCmd() *cobra.Command {
+// ConfigCmd creates the config command
+func ConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Manage cpx configuration",
@@ -122,10 +122,4 @@ func setVcpkgRoot(path string) error {
 
 	fmt.Printf("%s Set vcpkg_root to %s%s\n", Green, absPath, Reset)
 	return nil
-}
-
-// Config is kept for backward compatibility (if needed)
-func Config(args []string) {
-	// This function is deprecated - use NewConfigCmd instead
-	// Kept for compatibility during migration
 }

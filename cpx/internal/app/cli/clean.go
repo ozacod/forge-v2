@@ -8,8 +8,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCleanCmd creates the clean command
-func NewCleanCmd() *cobra.Command {
+// CleanCmd creates the clean command
+func CleanCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "clean",
 		Short: "Remove build artifacts",
@@ -62,10 +62,4 @@ func runClean(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-// Clean is kept for backward compatibility (if needed)
-func Clean(args []string) {
-	// This function is deprecated - use NewCleanCmd instead
-	// Kept for compatibility during migration
 }

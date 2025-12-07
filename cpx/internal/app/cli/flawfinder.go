@@ -5,8 +5,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewFlawfinderCmd creates the flawfinder command
-func NewFlawfinderCmd() *cobra.Command {
+// FlawfinderCmd creates the flawfinder command
+func FlawfinderCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "flawfinder",
 		Short: "Run Flawfinder security analysis for C/C++",
@@ -44,10 +44,4 @@ func runFlawfinder(cmd *cobra.Command, args []string) error {
 	}
 
 	return quality.RunFlawfinder(minLevel, csv, html, output, dataflow, quiet, singleline, context, targets)
-}
-
-// Flawfinder is kept for backward compatibility (if needed)
-func Flawfinder(args []string) {
-	// This function is deprecated - use NewFlawfinderCmd instead
-	// Kept for compatibility during migration
 }

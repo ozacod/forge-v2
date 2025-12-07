@@ -88,11 +88,11 @@ func main() {
 	rootCmd := root.GetRootCmd()
 
 	// Register all commands
-	rootCmd.AddCommand(cli.NewBuildCmd(setupVcpkgEnv))
-	rootCmd.AddCommand(cli.NewRunCmd(setupVcpkgEnv))
-	rootCmd.AddCommand(cli.NewTestCmd(setupVcpkgEnv))
-	rootCmd.AddCommand(cli.NewCleanCmd())
-	rootCmd.AddCommand(cli.NewNewCmd(
+	rootCmd.AddCommand(cli.BuildCmd(setupVcpkgEnv))
+	rootCmd.AddCommand(cli.RunCmd(setupVcpkgEnv))
+	rootCmd.AddCommand(cli.TestCmd(setupVcpkgEnv))
+	rootCmd.AddCommand(cli.CleanCmd())
+	rootCmd.AddCommand(cli.NewCmd(
 		getVcpkgPath,
 		setupVcpkgProject,
 		func(targetDir string, cfg *cli.CpxConfig, projectName string, isLib bool) error {
@@ -112,34 +112,26 @@ func main() {
 			mainCfg.Testing.Framework = cfg.Testing.Framework
 			mainCfg.Hooks.PreCommit = cfg.Hooks.PreCommit
 			mainCfg.Hooks.PrePush = cfg.Hooks.PrePush
-			if cfg.Features != nil {
-				mainCfg.Features = make(map[string]config.FeatureConfig)
-				for k, v := range cfg.Features {
-					mainCfg.Features[k] = config.FeatureConfig{
-						Dependencies: v.Dependencies,
-					}
-				}
-			}
 			return generateVcpkgProjectFilesFromConfig(targetDir, mainCfg, projectName, isLib)
 		}))
-	rootCmd.AddCommand(cli.NewAddCmd(runVcpkgCommand))
-	rootCmd.AddCommand(cli.NewRemoveCmd(runVcpkgCommand))
-	rootCmd.AddCommand(cli.NewListCmd(runVcpkgCommand))
-	rootCmd.AddCommand(cli.NewSearchCmd(runVcpkgCommand, getVcpkgPath))
-	rootCmd.AddCommand(cli.NewInfoCmd(runVcpkgCommand))
-	rootCmd.AddCommand(cli.NewFmtCmd())
-	rootCmd.AddCommand(cli.NewLintCmd(setupVcpkgEnv, getVcpkgPath))
-	rootCmd.AddCommand(cli.NewFlawfinderCmd())
-	rootCmd.AddCommand(cli.NewCppcheckCmd())
-	rootCmd.AddCommand(cli.NewAnalyzeCmd(setupVcpkgEnv, getVcpkgPath))
-	rootCmd.AddCommand(cli.NewCheckCmd(setupVcpkgEnv))
-	rootCmd.AddCommand(cli.NewDocCmd())
-	rootCmd.AddCommand(cli.NewReleaseCmd())
-	rootCmd.AddCommand(cli.NewUpgradeCmd())
-	rootCmd.AddCommand(cli.NewConfigCmd())
-	rootCmd.AddCommand(cli.NewCICmd())
-	rootCmd.AddCommand(cli.NewHooksCmd())
-	rootCmd.AddCommand(cli.NewUpdateCmd())
+	rootCmd.AddCommand(cli.AddCmd(runVcpkgCommand))
+	rootCmd.AddCommand(cli.RemoveCmd(runVcpkgCommand))
+	rootCmd.AddCommand(cli.ListCmd(runVcpkgCommand))
+	rootCmd.AddCommand(cli.SearchCmd(runVcpkgCommand, getVcpkgPath))
+	rootCmd.AddCommand(cli.InfoCmd(runVcpkgCommand))
+	rootCmd.AddCommand(cli.FmtCmd())
+	rootCmd.AddCommand(cli.LintCmd(setupVcpkgEnv, getVcpkgPath))
+	rootCmd.AddCommand(cli.FlawfinderCmd())
+	rootCmd.AddCommand(cli.CppcheckCmd())
+	rootCmd.AddCommand(cli.AnalyzeCmd(setupVcpkgEnv, getVcpkgPath))
+	rootCmd.AddCommand(cli.CheckCmd(setupVcpkgEnv))
+	rootCmd.AddCommand(cli.DocCmd())
+	rootCmd.AddCommand(cli.ReleaseCmd())
+	rootCmd.AddCommand(cli.UpgradeCmd())
+	rootCmd.AddCommand(cli.ConfigCmd())
+	rootCmd.AddCommand(cli.CICmd())
+	rootCmd.AddCommand(cli.HooksCmd())
+	rootCmd.AddCommand(cli.UpdateCmd())
 
 	// Handle vcpkg passthrough for unknown commands
 	// Check if command exists before executing
@@ -180,8 +172,6 @@ func contains(slice []string, item string) bool {
 	}
 	return false
 }
-
-// printUsage is no longer needed - cobra handles help automatically
 
 func setupVcpkgProject(targetDir, _ string, _ bool, dependencies []string) error {
 	vcpkgPath, err := getVcpkgPath()

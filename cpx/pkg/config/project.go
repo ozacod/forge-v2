@@ -38,13 +38,6 @@ type ProjectConfig struct {
 		PreCommit []string `yaml:"precommit,omitempty"` // e.g., ["fmt", "lint"]
 		PrePush   []string `yaml:"prepush,omitempty"`   // e.g., ["test"]
 	} `yaml:"hooks,omitempty"`
-	Features     map[string]FeatureConfig `yaml:"features,omitempty"`
-	Dependencies []string                 `yaml:"dependencies,omitempty"` // Deprecated: Dependencies are now in vcpkg.json
-}
-
-// FeatureConfig represents feature-specific configuration
-type FeatureConfig struct {
-	Dependencies map[string]map[string]interface{} `yaml:"dependencies,omitempty"`
 }
 
 // CIConfig represents the cpx.ci structure for cross-compilation

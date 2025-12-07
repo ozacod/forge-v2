@@ -7,8 +7,8 @@ import (
 
 var runSetupVcpkgEnvFunc func() error
 
-// NewRunCmd creates the run command
-func NewRunCmd(setupVcpkgEnv func() error) *cobra.Command {
+// RunCmd creates the run command
+func RunCmd(setupVcpkgEnv func() error) *cobra.Command {
 	runSetupVcpkgEnvFunc = setupVcpkgEnv
 
 	cmd := &cobra.Command{
@@ -34,10 +34,4 @@ func runRun(cmd *cobra.Command, args []string) error {
 	verbose, _ := cmd.Flags().GetBool("verbose")
 
 	return build.RunProject(release, target, args, verbose, runSetupVcpkgEnvFunc)
-}
-
-// Run is kept for backward compatibility (if needed)
-func Run(args []string, setupVcpkgEnv func() error) {
-	// This function is deprecated - use NewRunCmd instead
-	// Kept for compatibility during migration
 }

@@ -7,8 +7,8 @@ import (
 
 var setupVcpkgEnvFunc func() error
 
-// NewBuildCmd creates the build command
-func NewBuildCmd(setupVcpkgEnv func() error) *cobra.Command {
+// BuildCmd creates the build command
+func BuildCmd(setupVcpkgEnv func() error) *cobra.Command {
 	setupVcpkgEnvFunc = setupVcpkgEnv
 
 	cmd := &cobra.Command{
@@ -50,10 +50,4 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	}
 
 	return build.BuildProject(release, jobs, target, clean, optLevel, verbose, setupVcpkgEnvFunc)
-}
-
-// Build is kept for backward compatibility (if needed)
-func Build(args []string, setupVcpkgEnv func() error) {
-	// This function is deprecated - use NewBuildCmd instead
-	// Kept for compatibility during migration
 }

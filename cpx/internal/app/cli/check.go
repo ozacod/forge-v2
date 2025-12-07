@@ -11,8 +11,8 @@ import (
 
 var checkSetupVcpkgEnvFunc func() error
 
-// NewCheckCmd creates the check command
-func NewCheckCmd(setupVcpkgEnv func() error) *cobra.Command {
+// CheckCmd creates the check command
+func CheckCmd(setupVcpkgEnv func() error) *cobra.Command {
 	checkSetupVcpkgEnvFunc = setupVcpkgEnv
 
 	cmd := &cobra.Command{
@@ -70,12 +70,6 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	}
 
 	return checkCode(sanitizer, checkSetupVcpkgEnvFunc)
-}
-
-// Check handles the check command (sanitizers)
-func Check(args []string, setupVcpkgEnv func() error) {
-	// This function is deprecated - use NewCheckCmd instead
-	// Kept for compatibility during migration
 }
 
 func checkCode(sanitizer string, setupVcpkgEnv func() error) error {

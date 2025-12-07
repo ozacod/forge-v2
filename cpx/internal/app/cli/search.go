@@ -10,8 +10,8 @@ import (
 var searchRunVcpkgCommandFunc func([]string) error
 var searchGetVcpkgPath func() (string, error)
 
-// NewSearchCmd creates the search command
-func NewSearchCmd(runVcpkgCommand func([]string) error, getVcpkgPath func() (string, error)) *cobra.Command {
+// SearchCmd creates the search command
+func SearchCmd(runVcpkgCommand func([]string) error, getVcpkgPath func() (string, error)) *cobra.Command {
 	searchRunVcpkgCommandFunc = runVcpkgCommand
 	searchGetVcpkgPath = getVcpkgPath
 
@@ -42,10 +42,4 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	}
 
 	return tui.RunSearch(query, vcpkgPath, searchRunVcpkgCommandFunc)
-}
-
-// Search handles the search command - passes through to vcpkg
-func Search(args []string, runVcpkgCommand func([]string) error) {
-	// This function is deprecated - use NewSearchCmd instead
-	// Kept for compatibility during migration
 }

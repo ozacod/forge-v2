@@ -70,12 +70,6 @@ type CpxConfig struct {
 		PreCommit []string
 		PrePush   []string
 	}
-	Features map[string]FeatureConfig
-}
-
-// FeatureConfig represents feature-specific configuration
-type FeatureConfig struct {
-	Dependencies map[string]map[string]interface{}
 }
 
 // PrintSuccess prints a success message

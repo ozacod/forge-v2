@@ -5,8 +5,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewFmtCmd creates the fmt command
-func NewFmtCmd() *cobra.Command {
+// FmtCmd creates the fmt command
+func FmtCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "fmt",
 		Aliases: []string{"format"},
@@ -23,10 +23,4 @@ func NewFmtCmd() *cobra.Command {
 func runFmt(cmd *cobra.Command, args []string) error {
 	check, _ := cmd.Flags().GetBool("check")
 	return quality.FormatCode(check)
-}
-
-// Fmt is kept for backward compatibility (if needed)
-func Fmt(args []string) {
-	// This function is deprecated - use NewFmtCmd instead
-	// Kept for compatibility during migration
 }

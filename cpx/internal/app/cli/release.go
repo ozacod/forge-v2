@@ -12,8 +12,8 @@ import (
 	"github.com/ozacod/cpx/internal/pkg/templates"
 )
 
-// NewReleaseCmd creates the release command
-func NewReleaseCmd() *cobra.Command {
+// ReleaseCmd creates the release command
+func ReleaseCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "release",
 		Short: "Bump version number",
@@ -31,12 +31,6 @@ func runRelease(cmd *cobra.Command, args []string) error {
 		bumpType = args[0]
 	}
 	return bumpVersion(bumpType)
-}
-
-// Release is kept for backward compatibility (if needed)
-func Release(args []string) {
-	// This function is deprecated - use NewReleaseCmd instead
-	// Kept for compatibility during migration
 }
 
 func bumpVersion(bumpType string) error {

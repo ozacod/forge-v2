@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCICmd creates the ci command
-func NewCICmd() *cobra.Command {
+// CICmd creates the ci command
+func CICmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ci",
 		Short: "Build for multiple targets using Docker (cross-compilation)",
@@ -70,17 +70,6 @@ func runCIInit(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-// CI is kept for backward compatibility (if needed)
-func CI(args []string) {
-	// This function is deprecated - use NewCICmd instead
-	// Kept for compatibility during migration
-}
-
-func CIInit(args []string) {
-	// This function is deprecated - use NewCICmd instead
-	// Kept for compatibility during migration
 }
 
 func runCICommand(targetName string, rebuild bool) error {
@@ -171,8 +160,6 @@ func runCICommand(targetName string, rebuild bool) error {
 	fmt.Printf("   Artifacts are in: %s\n", outputDir)
 	return nil
 }
-
-// CIInit is deprecated - use NewCICmd instead
 
 func findProjectRoot() (string, error) {
 	dir, err := os.Getwd()

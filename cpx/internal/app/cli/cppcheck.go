@@ -5,8 +5,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCppcheckCmd creates the cppcheck command
-func NewCppcheckCmd() *cobra.Command {
+// CppcheckCmd creates the cppcheck command
+func CppcheckCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cppcheck",
 		Short: "Run Cppcheck static analysis for C/C++",
@@ -46,10 +46,4 @@ func runCppcheck(cmd *cobra.Command, args []string) error {
 	}
 
 	return quality.RunCppcheck(enable, output, xml, csv, quiet, force, inlineSuppr, platform, std, targets)
-}
-
-// Cppcheck is kept for backward compatibility (if needed)
-func Cppcheck(args []string) {
-	// This function is deprecated - use NewCppcheckCmd instead
-	// Kept for compatibility during migration
 }

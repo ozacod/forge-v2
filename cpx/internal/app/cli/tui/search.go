@@ -135,10 +135,13 @@ func parseVcpkgSearchOutput(output string) []SearchResult {
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "The result may be outdated") {
-			continue
-		}
-		if strings.HasPrefix(line, "If your library is not listed") {
+		if line == "" ||
+			strings.HasPrefix(line, "The result may be outdated") ||
+			strings.HasPrefix(line, "If your library is not listed") ||
+			strings.HasPrefix(line, "If your port is not listed") ||
+			strings.HasPrefix(line, "warning:") ||
+			strings.HasPrefix(line, "Use '--debug'") ||
+			strings.HasPrefix(line, "Errors occurred while parsing") {
 			continue
 		}
 

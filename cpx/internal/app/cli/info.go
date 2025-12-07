@@ -6,8 +6,8 @@ import (
 
 var infoRunVcpkgCommandFunc func([]string) error
 
-// NewInfoCmd creates the info command
-func NewInfoCmd(runVcpkgCommand func([]string) error) *cobra.Command {
+// InfoCmd creates the info command
+func InfoCmd(runVcpkgCommand func([]string) error) *cobra.Command {
 	infoRunVcpkgCommandFunc = runVcpkgCommand
 
 	cmd := &cobra.Command{
@@ -28,10 +28,4 @@ func runInfo(cmd *cobra.Command, args []string) error {
 	vcpkgArgs = append(vcpkgArgs, args...)
 
 	return infoRunVcpkgCommandFunc(vcpkgArgs)
-}
-
-// Info handles the info command - passes through to vcpkg
-func Info(args []string, runVcpkgCommand func([]string) error) {
-	// This function is deprecated - use NewInfoCmd instead
-	// Kept for compatibility during migration
 }

@@ -22,8 +22,8 @@ func (v *analyzeVcpkgAdapter) GetVcpkgPath() (string, error) {
 var analyzeSetupVcpkgEnvFunc func() error
 var analyzeGetVcpkgPathFunc func() (string, error)
 
-// NewAnalyzeCmd creates the analyze command
-func NewAnalyzeCmd(setupVcpkgEnv func() error, getVcpkgPath func() (string, error)) *cobra.Command {
+// AnalyzeCmd creates the analyze command
+func AnalyzeCmd(setupVcpkgEnv func() error, getVcpkgPath func() (string, error)) *cobra.Command {
 	analyzeSetupVcpkgEnvFunc = setupVcpkgEnv
 	analyzeGetVcpkgPathFunc = getVcpkgPath
 

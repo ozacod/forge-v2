@@ -6,8 +6,8 @@ import (
 
 var listRunVcpkgCommandFunc func([]string) error
 
-// NewListCmd creates the list command
-func NewListCmd(runVcpkgCommand func([]string) error) *cobra.Command {
+// ListCmd creates the list command
+func ListCmd(runVcpkgCommand func([]string) error) *cobra.Command {
 	listRunVcpkgCommandFunc = runVcpkgCommand
 
 	cmd := &cobra.Command{
@@ -27,10 +27,4 @@ func runList(cmd *cobra.Command, args []string) error {
 	vcpkgArgs = append(vcpkgArgs, args...)
 
 	return listRunVcpkgCommandFunc(vcpkgArgs)
-}
-
-// List handles the list command - passes through to vcpkg
-func List(args []string, runVcpkgCommand func([]string) error) {
-	// This function is deprecated - use NewListCmd instead
-	// Kept for compatibility during migration
 }

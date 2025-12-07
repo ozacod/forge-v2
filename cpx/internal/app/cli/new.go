@@ -16,8 +16,8 @@ var newGetVcpkgPathFunc func() (string, error)
 var newSetupVcpkgProjectFunc func(string, string, bool, []string) error
 var newGenerateVcpkgProjectFilesFromConfigFunc func(string, *CpxConfig, string, bool) error
 
-// NewNewCmd creates the new command with interactive TUI
-func NewNewCmd(getVcpkgPath func() (string, error), setupVcpkgProject func(string, string, bool, []string) error, generateVcpkgProjectFilesFromConfig func(string, *CpxConfig, string, bool) error) *cobra.Command {
+// NewCmd creates the new command with interactive TUI
+func NewCmd(getVcpkgPath func() (string, error), setupVcpkgProject func(string, string, bool, []string) error, generateVcpkgProjectFilesFromConfig func(string, *CpxConfig, string, bool) error) *cobra.Command {
 	newGetVcpkgPathFunc = getVcpkgPath
 	newSetupVcpkgProjectFunc = setupVcpkgProject
 	newGenerateVcpkgProjectFilesFromConfigFunc = generateVcpkgProjectFilesFromConfig

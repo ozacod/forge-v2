@@ -8,8 +8,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewUpdateCmd creates the update command
-func NewUpdateCmd() *cobra.Command {
+// UpdateCmd creates the update command
+func UpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "Update dependencies to latest versions",
@@ -29,12 +29,6 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		libName = args[0]
 	}
 	return updateDependencies(libName)
-}
-
-// Update is kept for backward compatibility (if needed)
-func Update(args []string) {
-	// This function is deprecated - use NewUpdateCmd instead
-	// Kept for compatibility during migration
 }
 
 func updateDependencies(specificLib string) error {

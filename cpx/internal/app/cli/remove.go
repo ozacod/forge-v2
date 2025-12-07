@@ -6,8 +6,8 @@ import (
 
 var removeRunVcpkgCommandFunc func([]string) error
 
-// NewRemoveCmd creates the remove command
-func NewRemoveCmd(runVcpkgCommand func([]string) error) *cobra.Command {
+// RemoveCmd creates the remove command
+func RemoveCmd(runVcpkgCommand func([]string) error) *cobra.Command {
 	removeRunVcpkgCommandFunc = runVcpkgCommand
 
 	cmd := &cobra.Command{
@@ -29,10 +29,4 @@ func runRemove(cmd *cobra.Command, args []string) error {
 	vcpkgArgs = append(vcpkgArgs, args...)
 
 	return removeRunVcpkgCommandFunc(vcpkgArgs)
-}
-
-// Remove handles the remove command - passes through to vcpkg
-func Remove(args []string, runVcpkgCommand func([]string) error) {
-	// This function is deprecated - use NewRemoveCmd instead
-	// Kept for compatibility during migration
 }

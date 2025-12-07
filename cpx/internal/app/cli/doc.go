@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewDocCmd creates the doc command
-func NewDocCmd() *cobra.Command {
+// DocCmd creates the doc command
+func DocCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "doc",
 		Short: "Generate documentation",
@@ -28,12 +28,6 @@ func NewDocCmd() *cobra.Command {
 func runDoc(cmd *cobra.Command, args []string) error {
 	open, _ := cmd.Flags().GetBool("open")
 	return generateDocs(open)
-}
-
-// Doc is kept for backward compatibility (if needed)
-func Doc(args []string) {
-	// This function is deprecated - use NewDocCmd instead
-	// Kept for compatibility during migration
 }
 
 // getProjectInfo reads project name and version from CMakeLists.txt or vcpkg.json

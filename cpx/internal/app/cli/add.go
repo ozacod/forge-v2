@@ -6,8 +6,8 @@ import (
 
 var addRunVcpkgCommandFunc func([]string) error
 
-// NewAddCmd creates the add command
-func NewAddCmd(runVcpkgCommand func([]string) error) *cobra.Command {
+// AddCmd creates the add command
+func AddCmd(runVcpkgCommand func([]string) error) *cobra.Command {
 	addRunVcpkgCommandFunc = runVcpkgCommand
 
 	cmd := &cobra.Command{
@@ -32,10 +32,4 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	vcpkgArgs = append(vcpkgArgs, args...)
 
 	return addRunVcpkgCommandFunc(vcpkgArgs)
-}
-
-// Add handles the add command - passes through to vcpkg
-func Add(args []string, runVcpkgCommand func([]string) error) {
-	// This function is deprecated - use NewAddCmd instead
-	// Kept for compatibility during migration
 }

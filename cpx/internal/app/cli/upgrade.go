@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewUpgradeCmd creates the upgrade command
-func NewUpgradeCmd() *cobra.Command {
+// UpgradeCmd creates the upgrade command
+func UpgradeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "upgrade",
 		Short: "Upgrade cpx to the latest version",

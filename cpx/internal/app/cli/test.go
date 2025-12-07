@@ -7,8 +7,8 @@ import (
 
 var testSetupVcpkgEnvFunc func() error
 
-// NewTestCmd creates the test command
-func NewTestCmd(setupVcpkgEnv func() error) *cobra.Command {
+// TestCmd creates the test command
+func TestCmd(setupVcpkgEnv func() error) *cobra.Command {
 	testSetupVcpkgEnvFunc = setupVcpkgEnv
 
 	cmd := &cobra.Command{
@@ -32,10 +32,4 @@ func runTest(cmd *cobra.Command, args []string) error {
 	filter, _ := cmd.Flags().GetString("filter")
 
 	return build.RunTests(verbose, filter, testSetupVcpkgEnvFunc)
-}
-
-// Test is kept for backward compatibility (if needed)
-func Test(args []string, setupVcpkgEnv func() error) {
-	// This function is deprecated - use NewTestCmd instead
-	// Kept for compatibility during migration
 }
