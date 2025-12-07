@@ -26,36 +26,6 @@ const Version = "1.1.5"
 // DefaultServer is the default server URL
 const DefaultServer = "https://cpx-dev.vercel.app"
 
-// CpxConfig represents the project configuration for code generation
-type CpxConfig struct {
-	Package struct {
-		Name        string
-		Version     string
-		CppStandard int
-		Authors     []string
-		Description string
-	}
-	Build struct {
-		SharedLibs  bool
-		ClangFormat string
-		BuildType   string
-		CxxFlags    string
-	}
-	VCS struct {
-		Type string
-	}
-	PackageManager struct {
-		Type string
-	}
-	Testing struct {
-		Framework string
-	}
-	Hooks struct {
-		PreCommit []string
-		PrePush   []string
-	}
-}
-
 // PrintError prints an error message
 func PrintError(format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)

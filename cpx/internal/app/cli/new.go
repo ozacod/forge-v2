@@ -14,10 +14,10 @@ import (
 
 var newGetVcpkgPathFunc func() (string, error)
 var newSetupVcpkgProjectFunc func(string, string, bool, []string) error
-var newGenerateVcpkgProjectFilesFromConfigFunc func(string, *CpxConfig, string, bool) error
+var newGenerateVcpkgProjectFilesFromConfigFunc func(string, *tui.ProjectConfig, string, bool) error
 
 // NewCmd creates the new command with interactive TUI
-func NewCmd(getVcpkgPath func() (string, error), setupVcpkgProject func(string, string, bool, []string) error, generateVcpkgProjectFilesFromConfig func(string, *CpxConfig, string, bool) error) *cobra.Command {
+func NewCmd(getVcpkgPath func() (string, error), setupVcpkgProject func(string, string, bool, []string) error, generateVcpkgProjectFilesFromConfig func(string, *tui.ProjectConfig, string, bool) error) *cobra.Command {
 	newGetVcpkgPathFunc = getVcpkgPath
 	newSetupVcpkgProjectFunc = setupVcpkgProject
 	newGenerateVcpkgProjectFilesFromConfigFunc = generateVcpkgProjectFilesFromConfig
@@ -61,7 +61,7 @@ func runNew(cmd *cobra.Command, args []string) error {
 	return createProjectFromTUI(config, newGetVcpkgPathFunc, newSetupVcpkgProjectFunc, newGenerateVcpkgProjectFilesFromConfigFunc)
 }
 
-func createProjectFromTUI(config tui.ProjectConfig, getVcpkgPath func() (string, error), setupVcpkgProject func(string, string, bool, []string) error, generateVcpkgProjectFilesFromConfig func(string, *CpxConfig, string, bool) error) error {
+func createProjectFromTUI(config tui.ProjectConfig, getVcpkgPath func() (string, error), setupVcpkgProject func(string, string, bool, []string) error, generateVcpkgProjectFilesFromConfig func(string, *tui.ProjectConfig, string, bool) error) error {
 	projectName := config.Name
 
 	// Check if directory already exists
@@ -75,24 +75,28 @@ func createProjectFromTUI(config tui.ProjectConfig, getVcpkgPath func() (string,
 	}
 
 	// Create configuration from TUI choices (no external templates needed)
-	cfg := &CpxConfig{}
-	cfg.Package.Name = projectName
-	cfg.Package.Version = "0.1.0"
-	cfg.Package.CppStandard = config.CppStandard
-	cfg.Build.SharedLibs = config.IsLibrary
-	cfg.Build.ClangFormat = config.ClangFormat
-	cfg.Testing.Framework = config.TestFramework
-	cfg.VCS.Type = config.VCS
-	cfg.PackageManager.Type = config.PackageManager
+	cfg := &tui.ProjectConfig{
+		Name:           projectName,
+		IsLibrary:      config.IsLibrary,
+		CppStandard:    config.CppStandard,
+		TestFramework:  config.TestFramework,
+		ClangFormat:    config.ClangFormat,
+		PackageManager: config.PackageManager,
+		VCS:            config.VCS,
+		UseHooks:       config.UseHooks,
+		GitHooks:       config.GitHooks,
+		PreCommit:      config.PreCommit,
+		PrePush:        config.PrePush,
+	}
 
 	// Set hooks
 	if len(config.GitHooks) > 0 {
 		for _, hook := range config.GitHooks {
 			if hook == "fmt" || hook == "lint" {
-				cfg.Hooks.PreCommit = append(cfg.Hooks.PreCommit, hook)
+				cfg.PreCommit = append(cfg.PreCommit, hook)
 			}
 			if hook == "test" {
-				cfg.Hooks.PrePush = append(cfg.Hooks.PrePush, hook)
+				cfg.PrePush = append(cfg.PrePush, hook)
 			}
 		}
 	}
@@ -101,13 +105,13 @@ func createProjectFromTUI(config tui.ProjectConfig, getVcpkgPath func() (string,
 	if config.VCS == "" {
 		config.VCS = "git" // Default to git for backward compatibility
 	}
-	cfg.VCS.Type = config.VCS
+	cfg.VCS = config.VCS
 
 	// Set PackageManager configuration
 	if config.PackageManager == "" {
 		config.PackageManager = "vcpkg" // Default to vcpkg for backward compatibility
 	}
-	cfg.PackageManager.Type = config.PackageManager
+	cfg.PackageManager = config.PackageManager
 
 	// Initialize git repository only if VCS is set to git
 	if config.VCS == "git" {

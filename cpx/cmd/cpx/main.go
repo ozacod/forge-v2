@@ -10,6 +10,7 @@ import (
 
 	"github.com/ozacod/cpx/internal/app/cli"
 	"github.com/ozacod/cpx/internal/app/cli/root"
+	"github.com/ozacod/cpx/internal/app/cli/tui"
 	"github.com/ozacod/cpx/internal/pkg/templates"
 	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 )
@@ -82,7 +83,7 @@ func main() {
 	rootCmd.AddCommand(cli.NewCmd(
 		getVcpkgPath,
 		setupVcpkgProject,
-		func(targetDir string, cfg *cli.CpxConfig, projectName string, isLib bool) error {
+		func(targetDir string, cfg *tui.ProjectConfig, projectName string, isLib bool) error {
 			return generateVcpkgProjectFilesFromConfig(targetDir, cfg, projectName, isLib)
 		}))
 	rootCmd.AddCommand(cli.AddCmd(runVcpkgCommand))
@@ -200,20 +201,17 @@ func setupVcpkgProject(targetDir, _ string, _ bool, dependencies []string) error
 }
 
 // generateVcpkgProjectFilesFromConfig generates CMake files with vcpkg integration from config struct
-func generateVcpkgProjectFilesFromConfig(targetDir string, cfg *cli.CpxConfig, projectName string, isLib bool) error {
+func generateVcpkgProjectFilesFromConfig(targetDir string, cfg *tui.ProjectConfig, projectName string, isLib bool) error {
 	if cfg == nil {
 		return fmt.Errorf("config is nil")
 	}
 
-	cppStandard := cfg.Package.CppStandard
+	cppStandard := cfg.CppStandard
 	if cppStandard == 0 {
 		cppStandard = 17
 	}
 
-	projectVersion := cfg.Package.Version
-	if projectVersion == "" {
-		projectVersion = "0.1.0"
-	}
+	projectVersion := "0.1.0"
 
 	// Get dependencies from vcpkg.json, not cpx.yaml
 	dependencies, err := getDependenciesFromVcpkgJsonLocal(targetDir)
@@ -235,14 +233,14 @@ func generateVcpkgProjectFilesFromConfig(targetDir string, cfg *cli.CpxConfig, p
 	}
 
 	// Generate CMakeLists.txt with vcpkg integration
-	cmakeLists := templates.GenerateVcpkgCMakeLists(projectName, cppStandard, dependencies, !isLib, cfg.Testing.Framework != "" && cfg.Testing.Framework != "none", cfg.Testing.Framework, projectVersion)
+	cmakeLists := templates.GenerateVcpkgCMakeLists(projectName, cppStandard, dependencies, !isLib, cfg.TestFramework != "" && cfg.TestFramework != "none", cfg.TestFramework, projectVersion)
 	if err := os.WriteFile(filepath.Join(targetDir, "CMakeLists.txt"), []byte(cmakeLists), 0644); err != nil {
 		return fmt.Errorf("failed to write CMakeLists.txt: %w", err)
 	}
 
 	// Generate CMakePresets.json only if using vcpkg
 	// (contains vcpkg toolchain reference)
-	if cfg.PackageManager.Type == "" || cfg.PackageManager.Type == "vcpkg" {
+	if cfg.PackageManager == "" || cfg.PackageManager == "vcpkg" {
 		cmakePresets := templates.GenerateCMakePresets()
 		if err := os.WriteFile(filepath.Join(targetDir, "CMakePresets.json"), []byte(cmakePresets), 0644); err != nil {
 			return fmt.Errorf("failed to write CMakePresets.json: %w", err)
@@ -281,7 +279,7 @@ func generateVcpkgProjectFilesFromConfig(targetDir string, cfg *cli.CpxConfig, p
 	}
 
 	// Generate .gitignore only if VCS is git or not specified (default to git)
-	if cfg.VCS.Type == "" || cfg.VCS.Type == "git" {
+	if cfg.VCS == "" || cfg.VCS == "git" {
 		gitignore := templates.GenerateGitignore()
 		if err := os.WriteFile(filepath.Join(targetDir, ".gitignore"), []byte(gitignore), 0644); err != nil {
 			return fmt.Errorf("failed to write .gitignore: %w", err)
@@ -289,7 +287,7 @@ func generateVcpkgProjectFilesFromConfig(targetDir string, cfg *cli.CpxConfig, p
 	}
 
 	// Generate .clang-format
-	clangFormatStyle := cfg.Build.ClangFormat
+	clangFormatStyle := cfg.ClangFormat
 	if clangFormatStyle == "" {
 		clangFormatStyle = "Google"
 	}
@@ -299,15 +297,15 @@ func generateVcpkgProjectFilesFromConfig(targetDir string, cfg *cli.CpxConfig, p
 	}
 
 	// Generate test files if testing framework is enabled
-	if cfg.Testing.Framework != "" && cfg.Testing.Framework != "none" {
+	if cfg.TestFramework != "" && cfg.TestFramework != "none" {
 		// Generate tests/CMakeLists.txt
-		testCMake := templates.GenerateTestCMake(projectName, dependencies, cfg.Testing.Framework)
+		testCMake := templates.GenerateTestCMake(projectName, dependencies, cfg.TestFramework)
 		if err := os.WriteFile(filepath.Join(targetDir, "tests/CMakeLists.txt"), []byte(testCMake), 0644); err != nil {
 			return fmt.Errorf("failed to write tests/CMakeLists.txt: %w", err)
 		}
 
 		// Generate tests/test_main.cpp
-		testMain := templates.GenerateTestMain(projectName, dependencies, cfg.Testing.Framework)
+		testMain := templates.GenerateTestMain(projectName, dependencies, cfg.TestFramework)
 		if err := os.WriteFile(filepath.Join(targetDir, "tests/test_main.cpp"), []byte(testMain), 0644); err != nil {
 			return fmt.Errorf("failed to write tests/test_main.cpp: %w", err)
 		}
