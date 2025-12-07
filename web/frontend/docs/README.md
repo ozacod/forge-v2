@@ -6,32 +6,34 @@ This directory contains the Docusaurus documentation for Cpx.
 
 1. Install dependencies:
 ```bash
-npm install
+bun install
 ```
 
-2. Start development server:
+2. Start the docs dev server:
 ```bash
-npm start
+bun run start
 ```
 
 3. Build for production:
 ```bash
-npm run build
+bun run build
 ```
 
 ## Integration with Frontend
 
-After building, copy the build output to the frontend public directory:
-
+After building, copy the output to the frontend public directory:
 ```bash
-npm run build
+bun run build
 cp -r build/* ../public/docs/
 ```
 
 Or use the automated script from the frontend directory:
-
 ```bash
 cd ..
-npm run build:docs
+bun run build:docs
 ```
+
+## Notes
+- Only `bun.lockb` is kept; use Bun for reproducible installs.
+- Use `bunx docusaurus <command>` (or `npx`) for one-off Docusaurus CLI tasks outside of package scripts.
 

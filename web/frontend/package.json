@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:docs": "cd docs && npm install && npm run build && cd .. && rm -rf public/docs && cp -r docs/build public/docs",
-    "watch:docs": "cd docs && npm install && npm run build -- --watch",
-    "build:all": "npm run build:docs && npm run build",
+    "build:docs": "cd docs && bun install && bun run build && cd .. && rm -rf public/docs && cp -r docs/build public/docs",
+    "watch:docs": "cd docs && bun install && bun run build -- --watch",
+    "build:all": "bun run build:docs && bun run build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
