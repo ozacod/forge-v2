@@ -403,18 +403,6 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 			Complete: true,
 		})
 
-		m.questions = append(m.questions, Question{
-			Question: "Would you like us to run npm install? (Y/n)",
-			Answer:   "Yes",
-			Complete: true,
-		})
-
-		m.questions = append(m.questions, Question{
-			Question: "Alright. We'll install the dependencies for you!",
-			Answer:   "",
-			Complete: true,
-		})
-
 		// Start creating
 		m.step = StepCreating
 		return m, tickCreation()

@@ -30,16 +30,16 @@ install: build-client
 	sudo cp bin/cpx /usr/local/bin/
 	@echo "✅ Installed! Run 'cpx --help' to get started"
 
-# Setup the frontend (install npm dependencies)
+# Setup the frontend (install dependencies)
 setup-frontend:
 	@echo "📦 Setting up frontend..."
-	cd web/frontend && npm install
+	cd web/frontend && bun install
 	@echo "✅ Frontend setup complete"
 
 # Build frontend for production (outputs to web/server/static)
 build-frontend:
 	@echo "🔨 Building frontend..."
-	cd web/frontend && npm run build
+	cd web/frontend && bun run build
 	@rm -rf web/server/static
 	@mv web/frontend/dist web/server/static
 	@echo "✅ Frontend built to web/server/static"
@@ -59,7 +59,7 @@ run-server: build-server
 # Run the frontend in dev mode
 run-frontend:
 	@echo "🚀 Starting frontend dev server on http://localhost:5173..."
-	cd web/frontend && npm run dev
+	cd web/frontend && bun run dev
 
 # Build frontend and run server (production mode)
 run-go: build-frontend build-server
@@ -106,7 +106,7 @@ help:
 	@echo "  make build-server      Build the backend server"
 	@echo "  make build-all         Build for all platforms (Linux, macOS, Windows)"
 	@echo "  make install           Install cpx to /usr/local/bin"
-	@echo "  make setup-frontend    Install frontend npm dependencies"
+	@echo "  make setup-frontend    Install frontend dependencies (Bun)"
 	@echo "  make run-go            Build frontend & run server (production)"
 	@echo "  make run-server        Start the server only"
 	@echo "  make run-frontend      Start the React dev server"
