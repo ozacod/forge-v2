@@ -290,6 +290,7 @@ func GenerateCMakePresets() string {
 func GenerateTestCMake(projectName string, testingFramework string) string {
 	hasGtest := testingFramework == "googletest"
 	hasCatch2 := testingFramework == "catch2"
+	hasDoctest := testingFramework == "doctest"
 
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf(`# Test configuration for %s
@@ -337,6 +338,20 @@ FetchContent_MakeAvailable(Catch2)
 		sb.WriteString("include(CTest)\n")
 		sb.WriteString("include(Catch)\n")
 		sb.WriteString(fmt.Sprintf("catch_discover_tests(%s_tests)\n", projectName))
+	} else if hasDoctest {
+		sb.WriteString(`# Fetch doctest
+include(FetchContent)
+FetchContent_Declare(
+    doctest
+    GIT_REPOSITORY https://github.com/doctest/doctest.git
+    GIT_TAG v2.4.12
+)
+FetchContent_MakeAvailable(doctest)
+
+`)
+		sb.WriteString(fmt.Sprintf("target_link_libraries(%s_tests PRIVATE doctest::doctest)\n\n", projectName))
+		sb.WriteString("include(CTest)\n")
+		sb.WriteString(fmt.Sprintf("add_test(NAME %s_tests COMMAND %s_tests)\n", projectName, projectName))
 	} else {
 		sb.WriteString(fmt.Sprintf("add_test(NAME %s_tests COMMAND %s_tests)\n", projectName, projectName))
 	}
