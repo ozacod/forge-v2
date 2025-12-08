@@ -3,41 +3,9 @@ package templates
 import (
 	"fmt"
 	"strings"
-	"unicode"
+
+	"github.com/ozacod/cpx/internal/pkg/naming"
 )
-
-func safeIdent(name string) string {
-	if name == "" {
-		return "project"
-	}
-	var b strings.Builder
-	for i, r := range name {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' {
-			if i == 0 && unicode.IsDigit(r) {
-				b.WriteByte('_')
-			}
-			b.WriteRune(r)
-		} else {
-			b.WriteByte('_')
-		}
-	}
-	if b.Len() == 0 {
-		return "project"
-	}
-	return b.String()
-}
-
-func safeIdentUpper(name string) string {
-	return strings.ToUpper(safeIdent(name))
-}
-
-func safeIdentTitle(name string) string {
-	id := safeIdent(name)
-	if id == "" {
-		return "Project"
-	}
-	return strings.ToUpper(id[:1]) + id[1:]
-}
 
 // ============================================================================
 // C++ SOURCE TEMPLATES
@@ -48,7 +16,7 @@ func GenerateVersionHpp(projectName, projectVersion string) string {
 	if projectVersion == "" {
 		projectVersion = "1.0.0"
 	}
-	safeNameUpper := safeIdentUpper(projectName)
+	safeNameUpper := naming.SafeIdentUpper(projectName)
 
 	// Parse version components
 	parts := strings.Split(projectVersion, ".")
@@ -80,7 +48,7 @@ func GenerateVersionHpp(projectName, projectVersion string) string {
 }
 
 func GenerateMainCpp(projectName string) string {
-	safeName := safeIdent(projectName)
+	safeName := naming.SafeIdent(projectName)
 	return fmt.Sprintf(`#include <%s/%s.hpp>
 #include <iostream>
 
@@ -92,8 +60,8 @@ int main() {
 }
 
 func GenerateLibHeader(projectName string) string {
-	safeName := safeIdent(projectName)
-	guard := safeIdentUpper(projectName) + "_HPP"
+	safeName := naming.SafeIdent(projectName)
+	guard := naming.SafeIdentUpper(projectName) + "_HPP"
 	return fmt.Sprintf(`#ifndef %s
 #define %s
 
@@ -119,7 +87,7 @@ std::string version();
 }
 
 func GenerateLibSource(projectName string) string {
-	safeName := safeIdent(projectName)
+	safeName := naming.SafeIdent(projectName)
 
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("#include <%s/%s.hpp>\n", projectName, projectName))
@@ -140,8 +108,8 @@ std::string version() {
 }
 
 func GenerateTestMain(projectName string, testingFramework string) string {
-	safeName := safeIdent(projectName)
-	safeNameTitle := safeIdentTitle(projectName)
+	safeName := naming.SafeIdent(projectName)
+	safeNameTitle := naming.SafeIdentTitle(projectName)
 	hasGtest := testingFramework == "googletest"
 	hasCatch2 := testingFramework == "catch2"
 	hasDoctest := testingFramework == "doctest"
