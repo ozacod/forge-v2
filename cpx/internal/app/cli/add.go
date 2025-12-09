@@ -71,4 +71,8 @@ func printUsageInfo(pkgName string) {
 		fmt.Println(content)
 		fmt.Println()
 	}
+
+	// Print link to cpx website for more info
+	fmt.Printf("%s📦 Find sample usage and more info at:%s\n", Cyan, Reset)
+	fmt.Printf("   https://cpx-dev.vercel.app/packages#package/%s\n\n", pkgName)
 }

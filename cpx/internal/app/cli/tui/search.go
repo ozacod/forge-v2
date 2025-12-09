@@ -401,6 +401,12 @@ func (m SearchModel) View() string {
 		for _, pkg := range m.addedPackages {
 			s.WriteString("  • " + pkg + "\n")
 		}
+		if len(m.addedPackages) > 0 {
+			s.WriteString("\n" + cyanBold.Render("📦 Find sample usage and more info at:") + "\n")
+			for _, pkg := range m.addedPackages {
+				s.WriteString("   https://cpx-dev.vercel.app/packages#package/" + pkg + "\n")
+			}
+		}
 	}
 
 	return s.String()
