@@ -169,11 +169,14 @@ func findProjectRoot() (string, error) {
 
 	// Walk up the directory tree looking for project markers
 	for {
-		// Check for cpx.ci or CMakeLists.txt (project markers)
+		// Check for cpx.ci or CMakeLists.txt or MODULE.bazel (project markers)
 		if _, err := os.Stat(filepath.Join(dir, "cpx.ci")); err == nil {
 			return dir, nil
 		}
 		if _, err := os.Stat(filepath.Join(dir, "CMakeLists.txt")); err == nil {
+			return dir, nil
+		}
+		if _, err := os.Stat(filepath.Join(dir, "MODULE.bazel")); err == nil {
 			return dir, nil
 		}
 
@@ -433,7 +436,17 @@ func runDockerBuild(target config.CITarget, projectRoot, outputDir string, build
 		return fmt.Errorf("failed to create target output directory: %w", err)
 	}
 
-	// Detect project type (executable or library)
+	// Check if this is a Bazel project
+	isBazel := false
+	if _, err := os.Stat(filepath.Join(projectRoot, "MODULE.bazel")); err == nil {
+		isBazel = true
+	}
+
+	if isBazel {
+		return runDockerBazelBuild(target, projectRoot, outputDir, buildConfig)
+	}
+
+	// Detect project type (executable or library) for CMake projects
 	isExe, err := detectProjectType(projectRoot)
 	if err != nil {
 		// If we can't detect, default to executable
@@ -656,6 +669,77 @@ echo " Build complete!"
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("docker run failed: %w", err)
+	}
+
+	return nil
+}
+
+// runDockerBazelBuild runs a Bazel build inside Docker
+func runDockerBazelBuild(target config.CITarget, projectRoot, outputDir string, buildConfig config.CIBuild) error {
+	// Get absolute paths
+	absProjectRoot, err := filepath.Abs(projectRoot)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path for project root: %w", err)
+	}
+
+	absOutputDir, err := filepath.Abs(filepath.Join(projectRoot, outputDir))
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path for output directory: %w", err)
+	}
+
+	// Create bazel cache directory
+	bazelCacheDir := filepath.Join(absProjectRoot, "build-bazel-"+target.Name)
+	if err := os.MkdirAll(bazelCacheDir, 0755); err != nil {
+		return fmt.Errorf("failed to create bazel cache directory: %w", err)
+	}
+
+	// Determine build config
+	bazelConfig := "release"
+	if buildConfig.Type == "Debug" || buildConfig.Type == "debug" {
+		bazelConfig = "debug"
+	}
+
+	// Create Bazel build script
+	buildScript := fmt.Sprintf(`#!/bin/bash
+set -e
+echo "  Building with Bazel..."
+# Set up Bazel cache
+export HOME=/tmp
+mkdir -p /tmp/.cache/bazel
+# Build with config
+bazel build --config=%s //...
+echo "  Copying artifacts..."
+mkdir -p /workspace/out/%s
+# Copy binaries from bazel-bin
+find bazel-bin -type f -executable ! -name "*.runfiles*" ! -name "*.params" ! -name "*.sh" -exec cp {} /workspace/out/%s/ \; 2>/dev/null || true
+# Copy libraries
+find bazel-bin -type f \( -name "*.a" -o -name "*.so" \) -exec cp {} /workspace/out/%s/ \; 2>/dev/null || true
+echo "  Build complete!"
+`, bazelConfig, target.Name, target.Name, target.Name)
+
+	// Run Docker container
+	fmt.Printf("  %s Running Bazel build in Docker container...%s\n", Cyan, Reset)
+
+	platform := target.Platform
+	dockerArgs := []string{"run", "--rm"}
+	if platform != "" {
+		dockerArgs = append(dockerArgs, "--platform", platform)
+	}
+
+	dockerArgs = append(dockerArgs,
+		"-v", absProjectRoot+":/workspace",
+		"-v", absOutputDir+":/workspace/out",
+		"-v", bazelCacheDir+":/tmp/.cache/bazel",
+		"-w", "/workspace",
+		target.Image,
+		"bash", "-c", buildScript)
+
+	cmd := exec.Command("docker", dockerArgs...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("docker bazel build failed: %w", err)
 	}
 
 	return nil
