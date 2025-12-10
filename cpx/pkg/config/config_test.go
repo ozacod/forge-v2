@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/ozacod/cpx/pkg/config"
@@ -12,93 +13,48 @@ import (
 func TestLoadGlobalConfig(t *testing.T) {
 	tests := []struct {
 		name         string
-		setupFunc    func() error
-		cleanupFunc  func() error
+		configYAML   string
 		expectsError bool
+		hasFile      bool
 	}{
 		{
 			name: "Valid config file",
-			setupFunc: func() error {
-				configDir, err := config.GetConfigDir()
-				if err != nil {
-					return err
-				}
-				configFile, err := config.GetConfigPath()
-				if err != nil {
-					return err
-				}
-
-				// Create config directory
-				if err := os.MkdirAll(configDir, 0755); err != nil {
-					return err
-				}
-
-				// Create a valid config file
-				configContent := `bcr_root: /tmp/test_bcr
+			configYAML: `bcr_root: /tmp/test_bcr
 vcpkg_root: /tmp/test_vcpkg
-`
-				return os.WriteFile(configFile, []byte(configContent), 0644)
-			},
-			cleanupFunc: func() error {
-				configFile, err := config.GetConfigPath()
-				if err != nil {
-					return err
-				}
-				return os.Remove(configFile)
-			},
+`,
 			expectsError: false,
+			hasFile:      true,
 		},
 		{
-			name: "Invalid config file",
-			setupFunc: func() error {
-				configDir, err := config.GetConfigDir()
-				if err != nil {
-					return err
-				}
-				configFile, err := config.GetConfigPath()
-				if err != nil {
-					return err
-				}
-
-				// Create config directory
-				if err := os.MkdirAll(configDir, 0755); err != nil {
-					return err
-				}
-
-				// Create an invalid config file
-				configContent := `invalid: yaml: content: [
-`
-				return os.WriteFile(configFile, []byte(configContent), 0644)
-			},
-			cleanupFunc: func() error {
-				configFile, err := config.GetConfigPath()
-				if err != nil {
-					return err
-				}
-				return os.Remove(configFile)
-			},
+			name:         "Invalid config file",
+			configYAML:   `invalid: yaml: content: [`,
 			expectsError: true,
+			hasFile:      true,
 		},
 		{
-			name: "Missing config file",
-			setupFunc: func() error {
-				// No setup needed - file should not exist
-				return nil
-			},
-			cleanupFunc: func() error {
-				// No cleanup needed
-				return nil
-			},
+			name:         "Missing config file",
+			configYAML:   "",
 			expectsError: false, // Should return default config
+			hasFile:      false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup test environment
-			if tt.setupFunc != nil {
-				defer tt.cleanupFunc()
-				require.NoError(t, tt.setupFunc())
+			// Use temp directory for isolation
+			tmpDir := t.TempDir()
+
+			// Set HOME to temp dir so config goes there
+			oldHome := os.Getenv("HOME")
+			defer os.Setenv("HOME", oldHome)
+			os.Setenv("HOME", tmpDir)
+
+			if tt.hasFile {
+				// Create config directory and file
+				configDir := filepath.Join(tmpDir, ".config", "cpx")
+				require.NoError(t, os.MkdirAll(configDir, 0755))
+				configFile := filepath.Join(configDir, "config.yaml")
+				require.NoError(t, os.WriteFile(configFile, []byte(tt.configYAML), 0644))
 			}
 
 			cfg, err := config.LoadGlobal()
@@ -109,8 +65,6 @@ vcpkg_root: /tmp/test_vcpkg
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, cfg)
-				// For missing config file, we expect default values (which may be empty)
-				// Just verify we got a valid config object
 			}
 		})
 	}
@@ -142,16 +96,13 @@ func TestSaveGlobalConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Clean up after test
-			defer func() {
-				configFile, err := config.GetConfigPath()
-				if err != nil {
-					return
-				}
-				if _, err := os.Stat(configFile); err == nil {
-					os.Remove(configFile)
-				}
-			}()
+			// Use temp directory for isolation
+			tmpDir := t.TempDir()
+
+			// Set HOME to temp dir so config goes there
+			oldHome := os.Getenv("HOME")
+			defer os.Setenv("HOME", oldHome)
+			os.Setenv("HOME", tmpDir)
 
 			err := config.SaveGlobal(tt.config)
 

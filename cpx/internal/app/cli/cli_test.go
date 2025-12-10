@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,52 +11,44 @@ import (
 
 func TestDetectProjectType(t *testing.T) {
 	tests := []struct {
-		name          string
-		setupFunc     func() error
-		cleanupFunc   func() error
-		expected      ProjectType
-		expectsError  bool
+		name     string
+		files    map[string]string // filename -> content
+		expected ProjectType
 	}{
 		{
-			name: "Bazel project",
-			setupFunc: func() error {
-				return os.WriteFile("MODULE.bazel", []byte("# test bazel module"), 0644)
-			},
-			cleanupFunc: func() error {
-				return os.Remove("MODULE.bazel")
-			},
-			expected:     ProjectTypeBazel,
+			name:     "Bazel project",
+			files:    map[string]string{"MODULE.bazel": "# test bazel module"},
+			expected: ProjectTypeBazel,
 		},
 		{
-			name: "Vcpkg project",
-			setupFunc: func() error {
-				return os.WriteFile("vcpkg.json", []byte("{}"), 0644)
-			},
-			cleanupFunc: func() error {
-				return os.Remove("vcpkg.json")
-			},
-			expected:     ProjectTypeVcpkg,
+			name:     "Vcpkg project",
+			files:    map[string]string{"vcpkg.json": "{}"},
+			expected: ProjectTypeVcpkg,
 		},
 		{
-			name: "Unknown project",
-			setupFunc: func() error {
-				// No files to create
-				return nil
-			},
-			cleanupFunc: func() error {
-				// No files to clean up
-				return nil
-			},
-			expected:     ProjectTypeUnknown,
+			name:     "Unknown project",
+			files:    nil,
+			expected: ProjectTypeUnknown,
+		},
+		{
+			name:     "Vcpkg takes priority over Bazel",
+			files:    map[string]string{"MODULE.bazel": "# bazel", "vcpkg.json": "{}"},
+			expected: ProjectTypeVcpkg,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup test files
-			if tt.setupFunc != nil {
-				defer tt.cleanupFunc()
-				require.NoError(t, tt.setupFunc())
+			// Use temp directory for isolation
+			tmpDir := t.TempDir()
+			oldWd, err := os.Getwd()
+			require.NoError(t, err)
+			defer os.Chdir(oldWd)
+			require.NoError(t, os.Chdir(tmpDir))
+
+			// Create test files
+			for filename, content := range tt.files {
+				require.NoError(t, os.WriteFile(filepath.Join(tmpDir, filename), []byte(content), 0644))
 			}
 
 			result := DetectProjectType()
@@ -67,46 +60,28 @@ func TestDetectProjectType(t *testing.T) {
 func TestRequireProject(t *testing.T) {
 	tests := []struct {
 		name         string
-		setupFunc    func() error
-		cleanupFunc  func() error
+		files        map[string]string
 		cmdName      string
 		expectsError bool
 		expectedType ProjectType
 	}{
 		{
-			name: "Valid vcpkg project",
-			setupFunc: func() error {
-				return os.WriteFile("vcpkg.json", []byte("{}"), 0644)
-			},
-			cleanupFunc: func() error {
-				return os.Remove("vcpkg.json")
-			},
+			name:         "Valid vcpkg project",
+			files:        map[string]string{"vcpkg.json": "{}"},
 			cmdName:      "test",
 			expectsError: false,
 			expectedType: ProjectTypeVcpkg,
 		},
 		{
-			name: "Valid bazel project",
-			setupFunc: func() error {
-				return os.WriteFile("MODULE.bazel", []byte("# test"), 0644)
-			},
-			cleanupFunc: func() error {
-				return os.Remove("MODULE.bazel")
-			},
+			name:         "Valid bazel project",
+			files:        map[string]string{"MODULE.bazel": "# test"},
 			cmdName:      "build",
 			expectsError: false,
 			expectedType: ProjectTypeBazel,
 		},
 		{
-			name: "Invalid project",
-			setupFunc: func() error {
-				// No files to create
-				return nil
-			},
-			cleanupFunc: func() error {
-				// No files to clean up
-				return nil
-			},
+			name:         "Invalid project",
+			files:        nil,
 			cmdName:      "build",
 			expectsError: true,
 			expectedType: ProjectTypeUnknown,
@@ -115,10 +90,16 @@ func TestRequireProject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup test files
-			if tt.setupFunc != nil {
-				defer tt.cleanupFunc()
-				require.NoError(t, tt.setupFunc())
+			// Use temp directory for isolation
+			tmpDir := t.TempDir()
+			oldWd, err := os.Getwd()
+			require.NoError(t, err)
+			defer os.Chdir(oldWd)
+			require.NoError(t, os.Chdir(tmpDir))
+
+			// Create test files
+			for filename, content := range tt.files {
+				require.NoError(t, os.WriteFile(filepath.Join(tmpDir, filename), []byte(content), 0644))
 			}
 
 			result, err := RequireProject(tt.cmdName)
@@ -137,32 +118,19 @@ func TestRequireProject(t *testing.T) {
 func TestRequireVcpkgProject(t *testing.T) {
 	tests := []struct {
 		name         string
-		setupFunc    func() error
-		cleanupFunc  func() error
+		files        map[string]string
 		cmdName      string
 		expectsError bool
 	}{
 		{
-			name: "Valid vcpkg project",
-			setupFunc: func() error {
-				return os.WriteFile("vcpkg.json", []byte("{}"), 0644)
-			},
-			cleanupFunc: func() error {
-				return os.Remove("vcpkg.json")
-			},
+			name:         "Valid vcpkg project",
+			files:        map[string]string{"vcpkg.json": "{}"},
 			cmdName:      "test",
 			expectsError: false,
 		},
 		{
-			name: "Invalid vcpkg project",
-			setupFunc: func() error {
-				// No files to create
-				return nil
-			},
-			cleanupFunc: func() error {
-				// No files to clean up
-				return nil
-			},
+			name:         "Invalid vcpkg project",
+			files:        nil,
 			cmdName:      "build",
 			expectsError: true,
 		},
@@ -170,13 +138,19 @@ func TestRequireVcpkgProject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup test files
-			if tt.setupFunc != nil {
-				defer tt.cleanupFunc()
-				require.NoError(t, tt.setupFunc())
+			// Use temp directory for isolation
+			tmpDir := t.TempDir()
+			oldWd, err := os.Getwd()
+			require.NoError(t, err)
+			defer os.Chdir(oldWd)
+			require.NoError(t, os.Chdir(tmpDir))
+
+			// Create test files
+			for filename, content := range tt.files {
+				require.NoError(t, os.WriteFile(filepath.Join(tmpDir, filename), []byte(content), 0644))
 			}
 
-			err := requireVcpkgProject(tt.cmdName)
+			err = requireVcpkgProject(tt.cmdName)
 
 			if tt.expectsError {
 				assert.Error(t, err)
