@@ -12,7 +12,6 @@ import (
 	"github.com/ozacod/cpx/internal/app/cli/tui"
 	"github.com/ozacod/cpx/internal/pkg/git"
 	"github.com/ozacod/cpx/internal/pkg/templates"
-	"github.com/ozacod/cpx/pkg/config"
 	"github.com/spf13/cobra"
 )
 
@@ -424,29 +423,11 @@ func createProjectFromTUI(config tui.ProjectConfig, getVcpkgPath func() (string,
 	return nil
 }
 
-// downloadMesonWrap copies a wrap from local WrapDB or downloads from WrapDB.mesonbuild.com
+// downloadMesonWrap downloads a wrap file from WrapDB.mesonbuild.com
 func downloadMesonWrap(projectName, wrapName string) error {
 	destPath := filepath.Join(projectName, "subprojects", wrapName+".wrap")
 
-	// Try local WrapDB first
-	cfg, err := config.LoadGlobal()
-	if err == nil && cfg.WrapdbRoot != "" {
-		localWrap := filepath.Join(cfg.WrapdbRoot, wrapName+".wrap")
-		if _, err := os.Stat(localWrap); err == nil {
-			// Copy from local
-			content, err := os.ReadFile(localWrap)
-			if err != nil {
-				return fmt.Errorf("failed to read local wrap: %w", err)
-			}
-			if err := os.WriteFile(destPath, content, 0644); err != nil {
-				return fmt.Errorf("failed to write wrap file: %w", err)
-			}
-			fmt.Printf("  Copied %s.wrap (from local)\n", wrapName)
-			return nil
-		}
-	}
-
-	// Fallback: download from WrapDB
+	// Download from WrapDB (like 'meson wrap install')
 	wrapURL := fmt.Sprintf("https://wrapdb.mesonbuild.com/v2/%s.wrap", wrapName)
 	resp, err := http.Get(wrapURL)
 	if err != nil {

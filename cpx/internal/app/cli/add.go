@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/ozacod/cpx/internal/pkg/bazel"
-	"github.com/ozacod/cpx/pkg/config"
 	"github.com/spf13/cobra"
 )
 
@@ -106,17 +105,13 @@ func runBazelAdd(args []string) error {
 }
 
 func runMesonAdd(args []string) error {
-	// Load config for local WrapDB path
-	cfg, cfgErr := config.LoadGlobal()
-	hasLocalWrapdb := cfgErr == nil && cfg.WrapdbRoot != ""
-
-	// Meson uses WrapDB - copy from local or download .wrap files to subprojects/
+	// Meson uses WrapDB - download .wrap files to subprojects/
 	for _, pkgName := range args {
 		if strings.HasPrefix(pkgName, "-") {
 			continue
 		}
 
-		fmt.Printf("%sAdding wrap file for %s...%s\n", Cyan, pkgName, Reset)
+		fmt.Printf("%sDownloading wrap for %s...%s\n", Cyan, pkgName, Reset)
 
 		// Ensure subprojects directory exists
 		if err := createDirIfNotExists("subprojects"); err != nil {
@@ -125,20 +120,7 @@ func runMesonAdd(args []string) error {
 
 		wrapPath := fmt.Sprintf("subprojects/%s.wrap", pkgName)
 
-		// Try local WrapDB first
-		if hasLocalWrapdb {
-			localWrap := cfg.WrapdbRoot + "/" + pkgName + ".wrap"
-			if content, err := os.ReadFile(localWrap); err == nil {
-				if err := writeFile(wrapPath, content); err != nil {
-					return fmt.Errorf("failed to write wrap file: %w", err)
-				}
-				fmt.Printf("%s✓ Added %s (from local cache)%s\n", Green, pkgName, Reset)
-				printMesonUsageInfo(pkgName)
-				continue
-			}
-		}
-
-		// Fallback: download from WrapDB
+		// Download from WrapDB (like 'meson wrap install')
 		wrapURL := fmt.Sprintf("https://wrapdb.mesonbuild.com/v2/%s.wrap", pkgName)
 		resp, err := http.Get(wrapURL)
 		if err != nil || resp.StatusCode != 200 {
@@ -158,7 +140,7 @@ func runMesonAdd(args []string) error {
 			return fmt.Errorf("failed to write wrap file: %w", err)
 		}
 
-		fmt.Printf("%s✓ Added %s to subprojects/%s.wrap%s\n", Green, pkgName, pkgName, Reset)
+		fmt.Printf("%s✓ Added %s%s\n", Green, pkgName, Reset)
 		printMesonUsageInfo(pkgName)
 	}
 

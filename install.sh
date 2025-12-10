@@ -311,90 +311,9 @@ configure_bcr() {
 
 # Check if WrapDB is already cloned
 check_wrapdb() {
-    # Check common installation locations (look for the subprojects dir with wraps)
-    WRAPDB_LOCATIONS="$HOME/.local/wrapdb/subprojects $HOME/.cache/cpx/wrapdb/subprojects"
-    for loc in $WRAPDB_LOCATIONS; do
-        if [ -d "$loc" ] && [ -f "$loc/gtest.wrap" ]; then
-            echo "$loc"
-            return 0
-        fi
-    done
-
+    # WrapDB is now downloaded on-demand by cpx add
+    # No local clone needed - return empty
     return 1
-}
-
-# Clone Meson WrapDB repository
-install_wrapdb() {
-    printf "\n%bChecking for Meson WrapDB...%b\n" "$CYAN" "$NC" >&2
-
-    # Check if WrapDB is already cloned
-    WRAPDB_PATH=$(check_wrapdb)
-    if [ -n "$WRAPDB_PATH" ]; then
-        printf "%bWrapDB found at: %s%b\n" "$GREEN" "$WRAPDB_PATH" "$NC" >&2
-        configure_wrapdb "$WRAPDB_PATH" >&2
-        echo "$WRAPDB_PATH"
-        return 0
-    fi
-
-    # Check if git is available
-    if ! command -v git > /dev/null 2>&1; then
-        printf "%bWarning: git is not installed. Skipping WrapDB installation.%b\n" "$YELLOW" "$NC" >&2
-        printf "You can clone WrapDB manually and configure it with: %bcpx config set-wrapdb-root <path>%b\n" "$CYAN" "$NC" >&2
-        return 1
-    fi
-
-    # Clone WrapDB
-    WRAPDB_INSTALL_DIR="$HOME/.local/wrapdb"
-    printf "%bCloning Meson WrapDB to %s...%b\n" "$CYAN" "$WRAPDB_INSTALL_DIR" "$NC" >&2
-
-    # Remove existing directory if incomplete
-    if [ -d "$WRAPDB_INSTALL_DIR" ] && [ ! -d "$WRAPDB_INSTALL_DIR/subprojects" ]; then
-        rm -rf "$WRAPDB_INSTALL_DIR"
-    fi
-
-    # Clone with depth 1 (shallow clone)
-    if ! git clone --depth 1 https://github.com/mesonbuild/wrapdb.git "$WRAPDB_INSTALL_DIR" >&2; then
-        printf "%bWarning: Failed to clone WrapDB. You can clone it manually later.%b\n" "$YELLOW" "$NC" >&2
-        printf "  Run: git clone https://github.com/mesonbuild/wrapdb.git ~/.local/wrapdb\n" >&2
-        printf "  Then: cpx config set-wrapdb-root ~/.local/wrapdb/subprojects\n" >&2
-        return 1
-    fi
-
-    # The actual wraps are in subprojects/ directory
-    WRAPDB_WRAPS_DIR="$WRAPDB_INSTALL_DIR/subprojects"
-    printf "%bSuccessfully cloned WrapDB to %s%b\n" "$GREEN" "$WRAPDB_INSTALL_DIR" "$NC" >&2
-    configure_wrapdb "$WRAPDB_WRAPS_DIR" >&2
-    echo "$WRAPDB_WRAPS_DIR"
-    return 0
-}
-
-# Configure cpx to use WrapDB
-configure_wrapdb() {
-    WRAPDB_PATH=$1
-
-    # Check if cpx is in PATH
-    if ! command -v "$BINARY_NAME" > /dev/null 2>&1; then
-        INSTALL_DIR=$(get_install_dir)
-        CPX_BINARY="$INSTALL_DIR/$BINARY_NAME"
-    else
-        CPX_BINARY=$(command -v "$BINARY_NAME")
-    fi
-
-    # Check if cpx binary exists
-    if [ ! -f "$CPX_BINARY" ]; then
-        printf "%bWarning: cpx binary not found. Cannot configure WrapDB automatically.%b\n" "$YELLOW" "$NC"
-        printf "Run this after cpx is in your PATH: %bcpx config set-wrapdb-root %s%b\n" "$CYAN" "$WRAPDB_PATH" "$NC"
-        return 1
-    fi
-
-    # Configure WrapDB root
-    printf "%bConfiguring cpx to use WrapDB...%b\n" "$CYAN" "$NC"
-    if "$CPX_BINARY" config set-wrapdb-root "$WRAPDB_PATH" 2>/dev/null; then
-        printf "%bSuccessfully configured cpx to use WrapDB%b\n" "$GREEN" "$NC"
-    else
-        printf "%bWarning: Failed to configure WrapDB automatically.%b\n" "$YELLOW" "$NC"
-        printf "Run this manually: %bcpx config set-wrapdb-root %s%b\n" "$CYAN" "$WRAPDB_PATH" "$NC"
-    fi
 }
 
 download_binary() {
@@ -671,14 +590,7 @@ main() {
         fi
 
         # Check if WrapDB already exists
-        EXISTING_WRAPDB=$(check_wrapdb 2>/dev/null || echo "")
-        if [ -n "$EXISTING_WRAPDB" ]; then
-            printf "%bFound existing WrapDB at: %s%b\n" "$GREEN" "$EXISTING_WRAPDB" "$NC"
-            configure_wrapdb "$EXISTING_WRAPDB" || true
-        else
-            # Install WrapDB
-            install_wrapdb 2>&1 | sed '$d' || true
-        fi
+        # WrapDB is downloaded on-demand by 'cpx add' - no installation needed
     fi
 }
 
