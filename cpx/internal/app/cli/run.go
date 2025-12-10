@@ -112,24 +112,42 @@ func runMesonRun(release bool, target string, args []string, verbose bool) error
 	// Find executable to run
 	var exePath string
 	if target != "" {
-		exePath = filepath.Join("builddir", target)
-	} else {
-		// Find first executable in builddir
-		entries, err := os.ReadDir("builddir")
-		if err != nil {
-			return fmt.Errorf("could not read builddir: %w", err)
+		// Try in src/ subdirectory first, then builddir root
+		srcPath := filepath.Join("builddir", "src", target)
+		if _, err := os.Stat(srcPath); err == nil {
+			exePath = srcPath
+		} else {
+			exePath = filepath.Join("builddir", target)
 		}
-		for _, entry := range entries {
-			if entry.IsDir() {
-				continue
-			}
-			info, err := entry.Info()
+	} else {
+		// Look for executables in builddir/src/ first (Meson puts main exe there)
+		searchDirs := []string{filepath.Join("builddir", "src"), "builddir"}
+		for _, dir := range searchDirs {
+			entries, err := os.ReadDir(dir)
 			if err != nil {
 				continue
 			}
-			// Check if executable
-			if info.Mode()&0111 != 0 && !strings.HasSuffix(entry.Name(), "_test") && !strings.HasSuffix(entry.Name(), ".a") && !strings.HasSuffix(entry.Name(), ".so") {
-				exePath = filepath.Join("builddir", entry.Name())
+			for _, entry := range entries {
+				if entry.IsDir() {
+					continue
+				}
+				info, err := entry.Info()
+				if err != nil {
+					continue
+				}
+				// Check if executable (not test, lib, or dylib)
+				name := entry.Name()
+				if info.Mode()&0111 != 0 &&
+					!strings.HasSuffix(name, "_test") &&
+					!strings.HasSuffix(name, "_bench") &&
+					!strings.HasSuffix(name, ".a") &&
+					!strings.HasSuffix(name, ".so") &&
+					!strings.HasSuffix(name, ".dylib") {
+					exePath = filepath.Join(dir, name)
+					break
+				}
+			}
+			if exePath != "" {
 				break
 			}
 		}
