@@ -309,12 +309,12 @@ configure_bcr() {
     fi
 }
 
-# Check if WrapDB is already downloaded
+# Check if WrapDB is already cloned
 check_wrapdb() {
-    # Check common installation locations
-    WRAPDB_LOCATIONS="$HOME/.local/wrapdb $HOME/.cache/cpx/wrapdb"
+    # Check common installation locations (look for the subprojects dir with wraps)
+    WRAPDB_LOCATIONS="$HOME/.local/wrapdb/subprojects $HOME/.cache/cpx/wrapdb/subprojects"
     for loc in $WRAPDB_LOCATIONS; do
-        if [ -d "$loc" ] && [ "$(ls -A $loc 2>/dev/null)" ]; then
+        if [ -d "$loc" ] && [ -f "$loc/gtest.wrap" ]; then
             echo "$loc"
             return 0
         fi
@@ -323,11 +323,11 @@ check_wrapdb() {
     return 1
 }
 
-# Download Meson WrapDB files
+# Clone Meson WrapDB repository
 install_wrapdb() {
     printf "\n%bChecking for Meson WrapDB...%b\n" "$CYAN" "$NC" >&2
 
-    # Check if WrapDB is already downloaded
+    # Check if WrapDB is already cloned
     WRAPDB_PATH=$(check_wrapdb)
     if [ -n "$WRAPDB_PATH" ]; then
         printf "%bWrapDB found at: %s%b\n" "$GREEN" "$WRAPDB_PATH" "$NC" >&2
@@ -336,33 +336,35 @@ install_wrapdb() {
         return 0
     fi
 
-    # Check if curl/wget is available
-    if [ "$DOWNLOADER" = "none" ]; then
-        printf "%bWarning: curl/wget not found. Skipping WrapDB installation.%b\n" "$YELLOW" "$NC" >&2
-        printf "You can download WrapDB manually and configure it with: %bcpx config set-wrapdb-root <path>%b\n" "$CYAN" "$NC" >&2
+    # Check if git is available
+    if ! command -v git > /dev/null 2>&1; then
+        printf "%bWarning: git is not installed. Skipping WrapDB installation.%b\n" "$YELLOW" "$NC" >&2
+        printf "You can clone WrapDB manually and configure it with: %bcpx config set-wrapdb-root <path>%b\n" "$CYAN" "$NC" >&2
         return 1
     fi
 
-    # Create WrapDB directory
+    # Clone WrapDB
     WRAPDB_INSTALL_DIR="$HOME/.local/wrapdb"
-    mkdir -p "$WRAPDB_INSTALL_DIR"
+    printf "%bCloning Meson WrapDB to %s...%b\n" "$CYAN" "$WRAPDB_INSTALL_DIR" "$NC" >&2
 
-    printf "%bDownloading popular WrapDB wraps to %s...%b\n" "$CYAN" "$WRAPDB_INSTALL_DIR" "$NC" >&2
+    # Remove existing directory if incomplete
+    if [ -d "$WRAPDB_INSTALL_DIR" ] && [ ! -d "$WRAPDB_INSTALL_DIR/subprojects" ]; then
+        rm -rf "$WRAPDB_INSTALL_DIR"
+    fi
 
-    # Download most common wraps
-    COMMON_WRAPS="gtest catch2 doctest google-benchmark fmt spdlog nlohmann_json abseil-cpp"
-    for wrap in $COMMON_WRAPS; do
-        printf "  Downloading %s.wrap..." "$wrap" >&2
-        if download "https://wrapdb.mesonbuild.com/v2/$wrap.wrap" "$WRAPDB_INSTALL_DIR/$wrap.wrap" 2>/dev/null; then
-            printf " %bdone%b\n" "$GREEN" "$NC" >&2
-        else
-            printf " %bfailed%b\n" "$YELLOW" "$NC" >&2
-        fi
-    done
+    # Clone with depth 1 (shallow clone)
+    if ! git clone --depth 1 https://github.com/mesonbuild/wrapdb.git "$WRAPDB_INSTALL_DIR" >&2; then
+        printf "%bWarning: Failed to clone WrapDB. You can clone it manually later.%b\n" "$YELLOW" "$NC" >&2
+        printf "  Run: git clone https://github.com/mesonbuild/wrapdb.git ~/.local/wrapdb\n" >&2
+        printf "  Then: cpx config set-wrapdb-root ~/.local/wrapdb/subprojects\n" >&2
+        return 1
+    fi
 
-    printf "%bSuccessfully downloaded WrapDB wraps to %s%b\n" "$GREEN" "$WRAPDB_INSTALL_DIR" "$NC" >&2
-    configure_wrapdb "$WRAPDB_INSTALL_DIR" >&2
-    echo "$WRAPDB_INSTALL_DIR"
+    # The actual wraps are in subprojects/ directory
+    WRAPDB_WRAPS_DIR="$WRAPDB_INSTALL_DIR/subprojects"
+    printf "%bSuccessfully cloned WrapDB to %s%b\n" "$GREEN" "$WRAPDB_INSTALL_DIR" "$NC" >&2
+    configure_wrapdb "$WRAPDB_WRAPS_DIR" >&2
+    echo "$WRAPDB_WRAPS_DIR"
     return 0
 }
 
