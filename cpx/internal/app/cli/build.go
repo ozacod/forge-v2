@@ -60,6 +60,12 @@ func runBuild(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		return runBazelBuild(release, target, clean, verbose)
+	case ProjectTypeMeson:
+		if watch {
+			fmt.Printf("%sWatch mode not yet supported for Meson projects%s\n", Yellow, Reset)
+			return nil
+		}
+		return runMesonBuild(release, target, clean, verbose)
 	case ProjectTypeVcpkg:
 		if watch {
 			return build.WatchAndBuild(release, jobs, target, optLevel, verbose, setupVcpkgEnvFunc)
@@ -160,6 +166,72 @@ func runBazelBuild(release bool, target string, clean bool, verbose bool) error 
 	copyCmd.Stdout = os.Stdout
 	copyCmd.Stderr = os.Stderr
 	copyCmd.Run() // Ignore errors - may have no artifacts
+
+	fmt.Printf("%s✓ Build successful%s\n", Green, Reset)
+	fmt.Printf("  Artifacts in: build/\n")
+	return nil
+}
+
+func runMesonBuild(release bool, target string, clean bool, verbose bool) error {
+	buildDir := "builddir"
+
+	// Clean if requested
+	if clean {
+		fmt.Printf("%sCleaning Meson build...%s\n", Cyan, Reset)
+		os.RemoveAll(buildDir)
+	}
+
+	// Check if build directory exists (needs setup)
+	if _, err := os.Stat(buildDir); os.IsNotExist(err) {
+		fmt.Printf("%sSetting up Meson build directory...%s\n", Cyan, Reset)
+		setupArgs := []string{"setup", buildDir}
+		if release {
+			setupArgs = append(setupArgs, "--buildtype=release")
+		} else {
+			setupArgs = append(setupArgs, "--buildtype=debug")
+		}
+		setupCmd := exec.Command("meson", setupArgs...)
+		setupCmd.Stdout = os.Stdout
+		setupCmd.Stderr = os.Stderr
+		if err := setupCmd.Run(); err != nil {
+			return fmt.Errorf("meson setup failed: %w", err)
+		}
+	}
+
+	// Build
+	fmt.Printf("%sBuilding with Meson...%s\n", Cyan, Reset)
+	compileArgs := []string{"compile", "-C", buildDir}
+	if target != "" {
+		compileArgs = append(compileArgs, target)
+	}
+	if verbose {
+		compileArgs = append(compileArgs, "-v")
+	}
+	buildCmd := exec.Command("meson", compileArgs...)
+	buildCmd.Stdout = os.Stdout
+	buildCmd.Stderr = os.Stderr
+
+	if err := buildCmd.Run(); err != nil {
+		return fmt.Errorf("meson compile failed: %w", err)
+	}
+
+	// Copy artifacts to build/ directory for consistency
+	if err := os.MkdirAll("build", 0755); err != nil {
+		return fmt.Errorf("failed to create build directory: %w", err)
+	}
+
+	fmt.Printf("%sCopying artifacts to build/...%s\n", Cyan, Reset)
+	copyCmd := exec.Command("bash", "-c", `
+		# Copy executables from builddir (excluding test executables)
+		find builddir -maxdepth 1 -type f -perm +111 ! -name "*.p" ! -name "*_test" -exec cp {} build/ \; 2>/dev/null || true
+		# Copy libraries
+		find builddir -maxdepth 1 -type f \( -name "*.a" -o -name "*.so" -o -name "*.dylib" \) -exec cp {} build/ \; 2>/dev/null || true
+		# List what was copied
+		ls build/ 2>/dev/null || true
+	`)
+	copyCmd.Stdout = os.Stdout
+	copyCmd.Stderr = os.Stderr
+	copyCmd.Run()
 
 	fmt.Printf("%s✓ Build successful%s\n", Green, Reset)
 	fmt.Printf("  Artifacts in: build/\n")

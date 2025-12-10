@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/ozacod/cpx/internal/pkg/bazel"
+	"github.com/ozacod/cpx/pkg/config"
 	"github.com/spf13/cobra"
 )
 
@@ -43,6 +45,8 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		return runVcpkgAdd(args)
 	case ProjectTypeBazel:
 		return runBazelAdd(args)
+	case ProjectTypeMeson:
+		return runMesonAdd(args)
 	default:
 		return fmt.Errorf("unsupported project type")
 	}
@@ -72,7 +76,7 @@ func runVcpkgAdd(args []string) error {
 func runBazelAdd(args []string) error {
 	bcrPath := addGetBcrPathFunc()
 	if bcrPath == "" {
-		return fmt.Errorf("Bazel Central Registry not configured\n  hint: run 'cpx config set-bcr-root <path>' or reinstall cpx")
+		return fmt.Errorf("bazel Central Registry not configured\n  hint: run 'cpx config set-bcr-root <path>' or reinstall cpx")
 	}
 
 	client := bazel.NewClient(bcrPath)
@@ -96,6 +100,66 @@ func runBazelAdd(args []string) error {
 
 		fmt.Printf("%s✓ Added %s@%s to MODULE.bazel%s\n", Green, pkgName, version, Reset)
 		printBazelUsageInfo(pkgName, version)
+	}
+
+	return nil
+}
+
+func runMesonAdd(args []string) error {
+	// Load config for local WrapDB path
+	cfg, cfgErr := config.LoadGlobal()
+	hasLocalWrapdb := cfgErr == nil && cfg.WrapdbRoot != ""
+
+	// Meson uses WrapDB - copy from local or download .wrap files to subprojects/
+	for _, pkgName := range args {
+		if strings.HasPrefix(pkgName, "-") {
+			continue
+		}
+
+		fmt.Printf("%sAdding wrap file for %s...%s\n", Cyan, pkgName, Reset)
+
+		// Ensure subprojects directory exists
+		if err := createDirIfNotExists("subprojects"); err != nil {
+			return fmt.Errorf("failed to create subprojects directory: %w", err)
+		}
+
+		wrapPath := fmt.Sprintf("subprojects/%s.wrap", pkgName)
+
+		// Try local WrapDB first
+		if hasLocalWrapdb {
+			localWrap := cfg.WrapdbRoot + "/" + pkgName + ".wrap"
+			if content, err := os.ReadFile(localWrap); err == nil {
+				if err := writeFile(wrapPath, content); err != nil {
+					return fmt.Errorf("failed to write wrap file: %w", err)
+				}
+				fmt.Printf("%s✓ Added %s (from local cache)%s\n", Green, pkgName, Reset)
+				printMesonUsageInfo(pkgName)
+				continue
+			}
+		}
+
+		// Fallback: download from WrapDB
+		wrapURL := fmt.Sprintf("https://wrapdb.mesonbuild.com/v2/%s.wrap", pkgName)
+		resp, err := http.Get(wrapURL)
+		if err != nil || resp.StatusCode != 200 {
+			fmt.Printf("%s✗ Package '%s' not found in WrapDB%s\n", Red, pkgName, Reset)
+			fmt.Printf("  Try searching at: https://wrapdb.mesonbuild.com/\n")
+			continue
+		}
+		defer resp.Body.Close()
+
+		wrapContent, err := io.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("%s✗ Failed to download wrap for %s%s\n", Red, pkgName, Reset)
+			continue
+		}
+
+		if err := writeFile(wrapPath, wrapContent); err != nil {
+			return fmt.Errorf("failed to write wrap file: %w", err)
+		}
+
+		fmt.Printf("%s✓ Added %s to subprojects/%s.wrap%s\n", Green, pkgName, pkgName, Reset)
+		printMesonUsageInfo(pkgName)
 	}
 
 	return nil
@@ -134,4 +198,21 @@ func printBazelUsageInfo(pkgName, version string) {
 	fmt.Printf("%s📦 Find more info at:%s\n", Cyan, Reset)
 	fmt.Printf("   https://registry.bazel.build/modules/%s\n", pkgName)
 	fmt.Printf("   https://cpx-dev.vercel.app/bazel#module/%s\n\n", pkgName)
+}
+
+// printMesonUsageInfo prints usage info for Meson wraps
+func printMesonUsageInfo(pkgName string) {
+	fmt.Printf("\n%sUSAGE INFO FOR %s:%s\n", Cyan, pkgName, Reset)
+	fmt.Printf("Add this to your meson.build:\n\n")
+	fmt.Printf("  %s_dep = dependency('%s')\n\n", pkgName, pkgName)
+	fmt.Printf("%s📦 Find more info at:%s\n", Cyan, Reset)
+	fmt.Printf("   https://wrapdb.mesonbuild.com/\n\n")
+}
+
+func createDirIfNotExists(path string) error {
+	return os.MkdirAll(path, 0755)
+}
+
+func writeFile(path string, content []byte) error {
+	return os.WriteFile(path, content, 0644)
 }

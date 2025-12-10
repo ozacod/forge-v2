@@ -324,3 +324,412 @@ func TestGenerateBazelGitignore(t *testing.T) {
 	// Should ignore build directory
 	assert.Contains(t, result, "build")
 }
+
+// ============================================================================
+// MESON TEMPLATE TESTS
+// ============================================================================
+
+func TestGenerateMesonBuildRoot(t *testing.T) {
+	tests := []struct {
+		name               string
+		projectName        string
+		isExe              bool
+		cppStandard        int
+		testFramework      string
+		benchmarkFramework string
+		shouldContain      []string
+		shouldNotContain   []string
+	}{
+		{
+			name:               "Executable with tests and bench",
+			projectName:        "myapp",
+			isExe:              true,
+			cppStandard:        17,
+			testFramework:      "googletest",
+			benchmarkFramework: "google-benchmark",
+			shouldContain: []string{
+				"project('myapp', 'cpp'",
+				"cpp_std=c++17",
+				"subdir('src')",
+				"subdir('tests')",
+				"subdir('bench')",
+				"inc_dirs = include_directories",
+			},
+		},
+		{
+			name:               "Library without tests",
+			projectName:        "mylib",
+			isExe:              false,
+			cppStandard:        20,
+			testFramework:      "",
+			benchmarkFramework: "",
+			shouldContain: []string{
+				"project('mylib', 'cpp'",
+				"cpp_std=c++20",
+				"subdir('src')",
+			},
+			shouldNotContain: []string{
+				"subdir('tests')",
+				"subdir('bench')",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GenerateMesonBuildRoot(tt.projectName, tt.isExe, tt.cppStandard, tt.testFramework, tt.benchmarkFramework)
+
+			for _, s := range tt.shouldContain {
+				assert.Contains(t, result, s, "Expected to contain: %s", s)
+			}
+			for _, s := range tt.shouldNotContain {
+				assert.NotContains(t, result, s, "Expected NOT to contain: %s", s)
+			}
+		})
+	}
+}
+
+func TestGenerateMesonBuildSrc(t *testing.T) {
+	tests := []struct {
+		name          string
+		projectName   string
+		isExe         bool
+		shouldContain []string
+	}{
+		{
+			name:        "Executable",
+			projectName: "myapp",
+			isExe:       true,
+			shouldContain: []string{
+				"executable('myapp'",
+				"static_library('myapp_lib'",
+				"main.cpp",
+				"myapp.cpp",
+			},
+		},
+		{
+			name:        "Library",
+			projectName: "mylib",
+			isExe:       false,
+			shouldContain: []string{
+				"library('mylib'",
+				"mylib.cpp",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GenerateMesonBuildSrc(tt.projectName, tt.isExe)
+
+			for _, s := range tt.shouldContain {
+				assert.Contains(t, result, s, "Expected to contain: %s", s)
+			}
+		})
+	}
+}
+
+func TestGenerateMesonBuildTests(t *testing.T) {
+	tests := []struct {
+		name          string
+		projectName   string
+		testFramework string
+		shouldContain []string
+	}{
+		{
+			name:          "GoogleTest",
+			projectName:   "myproject",
+			testFramework: "googletest",
+			shouldContain: []string{
+				"dependency('gtest'",
+				"executable('myproject_test'",
+				"test('myproject tests'",
+			},
+		},
+		{
+			name:          "Catch2",
+			projectName:   "myproject",
+			testFramework: "catch2",
+			shouldContain: []string{
+				"dependency('catch2-with-main'",
+				"executable('myproject_test'",
+			},
+		},
+		{
+			name:          "Doctest",
+			projectName:   "myproject",
+			testFramework: "doctest",
+			shouldContain: []string{
+				"dependency('doctest'",
+				"executable('myproject_test'",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GenerateMesonBuildTests(tt.projectName, tt.testFramework)
+
+			for _, s := range tt.shouldContain {
+				assert.Contains(t, result, s, "Expected to contain: %s", s)
+			}
+		})
+	}
+}
+
+func TestGenerateMesonBuildBench(t *testing.T) {
+	tests := []struct {
+		name               string
+		projectName        string
+		benchmarkFramework string
+		shouldContain      []string
+	}{
+		{
+			name:               "Google Benchmark",
+			projectName:        "myproject",
+			benchmarkFramework: "google-benchmark",
+			shouldContain: []string{
+				"dependency('benchmark'",
+				"executable('myproject_bench'",
+			},
+		},
+		{
+			name:               "Nanobench",
+			projectName:        "myproject",
+			benchmarkFramework: "nanobench",
+			shouldContain: []string{
+				"# nanobench is header-only",
+				"executable('myproject_bench'",
+			},
+		},
+		{
+			name:               "Catch2 Benchmark",
+			projectName:        "myproject",
+			benchmarkFramework: "catch2-benchmark",
+			shouldContain: []string{
+				"dependency('catch2-with-main'",
+				"executable('myproject_bench'",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GenerateMesonBuildBench(tt.projectName, tt.benchmarkFramework)
+
+			for _, s := range tt.shouldContain {
+				assert.Contains(t, result, s, "Expected to contain: %s", s)
+			}
+		})
+	}
+}
+
+func TestGenerateMesonOptions(t *testing.T) {
+	result := GenerateMesonOptions()
+
+	assert.Contains(t, result, "enable_tests")
+	assert.Contains(t, result, "enable_benchmarks")
+	assert.Contains(t, result, "type : 'boolean'")
+}
+
+func TestGenerateMesonGitignore(t *testing.T) {
+	result := GenerateMesonGitignore()
+
+	assert.Contains(t, result, "builddir/")
+	assert.Contains(t, result, "build/")
+	assert.Contains(t, result, ".cache/")
+	assert.Contains(t, result, ".idea/")
+}
+
+func TestGenerateMesonReadme(t *testing.T) {
+	tests := []struct {
+		name          string
+		projectName   string
+		cppStandard   int
+		isLib         bool
+		shouldContain []string
+	}{
+		{
+			name:        "Executable",
+			projectName: "myapp",
+			cppStandard: 17,
+			isLib:       false,
+			shouldContain: []string{
+				"# myapp",
+				"C++17",
+				"cpx build",
+				"cpx run",
+				"cpx test",
+			},
+		},
+		{
+			name:        "Library",
+			projectName: "mylib",
+			cppStandard: 20,
+			isLib:       true,
+			shouldContain: []string{
+				"# mylib",
+				"C++20",
+				"library",
+				"meson compile",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GenerateMesonReadme(tt.projectName, tt.cppStandard, tt.isLib)
+
+			for _, s := range tt.shouldContain {
+				assert.Contains(t, result, s, "Expected to contain: %s", s)
+			}
+		})
+	}
+}
+
+// ============================================================================
+// CMAKE TEMPLATE TESTS
+// ============================================================================
+
+func TestGenerateVcpkgCMakeLists(t *testing.T) {
+	tests := []struct {
+		name          string
+		projectName   string
+		cppStandard   int
+		isExe         bool
+		includeTests  bool
+		shouldContain []string
+	}{
+		{
+			name:         "Executable with tests",
+			projectName:  "myapp",
+			cppStandard:  17,
+			isExe:        true,
+			includeTests: true,
+			shouldContain: []string{
+				"project(myapp",
+				"CMAKE_CXX_STANDARD 17",
+				"add_executable",
+				"add_subdirectory(tests)",
+			},
+		},
+		{
+			name:         "Library without tests",
+			projectName:  "mylib",
+			cppStandard:  20,
+			isExe:        false,
+			includeTests: false,
+			shouldContain: []string{
+				"project(mylib",
+				"CMAKE_CXX_STANDARD 20",
+				"add_library",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GenerateVcpkgCMakeLists(tt.projectName, tt.cppStandard, tt.isExe, tt.includeTests, "", false, "0.1.0")
+
+			for _, s := range tt.shouldContain {
+				assert.Contains(t, result, s, "Expected to contain: %s", s)
+			}
+		})
+	}
+}
+
+func TestGenerateCMakePresets(t *testing.T) {
+	result := GenerateCMakePresets()
+
+	assert.Contains(t, result, "configurePresets")
+	assert.Contains(t, result, "VCPKG_ROOT")
+	assert.Contains(t, result, "vcpkg.cmake")
+}
+
+func TestGenerateTestMain(t *testing.T) {
+	tests := []struct {
+		name          string
+		projectName   string
+		testFramework string
+		shouldContain []string
+	}{
+		{
+			name:          "GoogleTest",
+			projectName:   "myproject",
+			testFramework: "googletest",
+			shouldContain: []string{"gtest", "TEST("},
+		},
+		{
+			name:          "Catch2",
+			projectName:   "myproject",
+			testFramework: "catch2",
+			shouldContain: []string{"catch2", "TEST_CASE"},
+		},
+		{
+			name:          "Doctest",
+			projectName:   "myproject",
+			testFramework: "doctest",
+			shouldContain: []string{"doctest", "TEST_CASE"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GenerateTestMain(tt.projectName, tt.testFramework)
+
+			for _, s := range tt.shouldContain {
+				assert.Contains(t, result, s, "Expected to contain: %s", s)
+			}
+		})
+	}
+}
+
+func TestGenerateMainCpp(t *testing.T) {
+	result := GenerateMainCpp("myproject")
+
+	assert.Contains(t, result, "#include")
+	assert.Contains(t, result, "myproject")
+	assert.Contains(t, result, "int main")
+}
+
+func TestGenerateLibHeader(t *testing.T) {
+	result := GenerateLibHeader("myproject")
+
+	assert.Contains(t, result, "#ifndef")
+	assert.Contains(t, result, "#define")
+	assert.Contains(t, result, "namespace")
+	assert.Contains(t, result, "myproject")
+}
+
+func TestGenerateLibSource(t *testing.T) {
+	result := GenerateLibSource("myproject")
+
+	assert.Contains(t, result, "#include")
+	assert.Contains(t, result, "myproject")
+	assert.Contains(t, result, "namespace")
+}
+
+func TestGenerateClangFormat(t *testing.T) {
+	tests := []struct {
+		style         string
+		shouldContain string
+	}{
+		{"Google", "BasedOnStyle: Google"},
+		{"LLVM", "BasedOnStyle: LLVM"},
+		{"Chromium", "BasedOnStyle: Chromium"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.style, func(t *testing.T) {
+			result := GenerateClangFormat(tt.style)
+			assert.Contains(t, result, tt.shouldContain)
+		})
+	}
+}
+
+func TestGenerateCpxCI(t *testing.T) {
+	result := GenerateCpxCI()
+
+	assert.Contains(t, result, "targets:")
+	assert.Contains(t, result, "build:")
+}

@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,6 +12,7 @@ import (
 	"github.com/ozacod/cpx/internal/app/cli/tui"
 	"github.com/ozacod/cpx/internal/pkg/git"
 	"github.com/ozacod/cpx/internal/pkg/templates"
+	"github.com/ozacod/cpx/pkg/config"
 	"github.com/spf13/cobra"
 )
 
@@ -184,6 +187,63 @@ func createProjectFromTUI(config tui.ProjectConfig, getVcpkgPath func() (string,
 		if err := os.WriteFile(filepath.Join(projectName, ".bazelignore"), []byte(bazelignore), 0644); err != nil {
 			return fmt.Errorf("failed to write .bazelignore: %w", err)
 		}
+	} else if cfg.PackageManager == "meson" {
+		// Generate meson.build (root)
+		mesonBuild := templates.GenerateMesonBuildRoot(projectName, !cfg.IsLibrary, cppStandard, cfg.TestFramework, cfg.Benchmark)
+		if err := os.WriteFile(filepath.Join(projectName, "meson.build"), []byte(mesonBuild), 0644); err != nil {
+			return fmt.Errorf("failed to write meson.build: %w", err)
+		}
+
+		// Generate src/meson.build
+		srcMeson := templates.GenerateMesonBuildSrc(projectName, !cfg.IsLibrary)
+		if err := os.WriteFile(filepath.Join(projectName, "src/meson.build"), []byte(srcMeson), 0644); err != nil {
+			return fmt.Errorf("failed to write src/meson.build: %w", err)
+		}
+
+		// Generate meson_options.txt (use _options.txt for wider compatibility)
+		mesonOptions := templates.GenerateMesonOptions()
+		if err := os.WriteFile(filepath.Join(projectName, "meson_options.txt"), []byte(mesonOptions), 0644); err != nil {
+			return fmt.Errorf("failed to write meson_options.txt: %w", err)
+		}
+
+		// Create subprojects directory for wraps
+		if err := os.MkdirAll(filepath.Join(projectName, "subprojects"), 0755); err != nil {
+			return fmt.Errorf("failed to create subprojects directory: %w", err)
+		}
+
+		// Download required wrap files for test framework
+		if cfg.TestFramework != "" && cfg.TestFramework != "none" {
+			wrapName := ""
+			switch cfg.TestFramework {
+			case "googletest":
+				wrapName = "gtest"
+			case "catch2":
+				wrapName = "catch2"
+			case "doctest":
+				wrapName = "doctest"
+			}
+			if wrapName != "" {
+				if err := downloadMesonWrap(projectName, wrapName); err != nil {
+					fmt.Printf("%sWarning: could not download %s wrap: %v%s\n", Yellow, wrapName, err, Reset)
+				}
+			}
+		}
+
+		// Download required wrap files for benchmark framework
+		if cfg.Benchmark != "" && cfg.Benchmark != "none" {
+			wrapName := ""
+			switch cfg.Benchmark {
+			case "google-benchmark":
+				wrapName = "google-benchmark"
+			case "catch2-benchmark":
+				wrapName = "catch2"
+			}
+			if wrapName != "" {
+				if err := downloadMesonWrap(projectName, wrapName); err != nil {
+					fmt.Printf("%sWarning: could not download %s wrap: %v%s\n", Yellow, wrapName, err, Reset)
+				}
+			}
+		}
 	} else {
 		// Generate CMakeLists.txt (vcpkg or none)
 		cmakeLists := templates.GenerateVcpkgCMakeLists(projectName, cppStandard, !cfg.IsLibrary, cfg.TestFramework != "" && cfg.TestFramework != "none", cfg.Benchmark, benchSources != nil, projectVersion)
@@ -239,6 +299,12 @@ func createProjectFromTUI(config tui.ProjectConfig, getVcpkgPath func() (string,
 			if err := os.WriteFile(filepath.Join(projectName, "bench/BUILD.bazel"), []byte(benchBuild), 0644); err != nil {
 				return fmt.Errorf("failed to write bench/BUILD.bazel: %w", err)
 			}
+		} else if cfg.PackageManager == "meson" {
+			// Generate bench/meson.build for Meson projects
+			benchMeson := templates.GenerateMesonBuildBench(projectName, cfg.Benchmark)
+			if err := os.WriteFile(filepath.Join(projectName, "bench/meson.build"), []byte(benchMeson), 0644); err != nil {
+				return fmt.Errorf("failed to write bench/meson.build: %w", err)
+			}
 		} else {
 			// Generate bench/CMakeLists.txt for CMake projects
 			benchCMake := templates.GenerateBenchCMake(projectName, cfg.Benchmark)
@@ -252,6 +318,8 @@ func createProjectFromTUI(config tui.ProjectConfig, getVcpkgPath func() (string,
 	var readme string
 	if cfg.PackageManager == "bazel" {
 		readme = templates.GenerateBazelReadme(projectName, cppStandard, cfg.IsLibrary)
+	} else if cfg.PackageManager == "meson" {
+		readme = templates.GenerateMesonReadme(projectName, cppStandard, cfg.IsLibrary)
 	} else {
 		readme = templates.GenerateVcpkgReadme(projectName, cppStandard, cfg.IsLibrary)
 	}
@@ -264,6 +332,8 @@ func createProjectFromTUI(config tui.ProjectConfig, getVcpkgPath func() (string,
 		var gitignore string
 		if cfg.PackageManager == "bazel" {
 			gitignore = templates.GenerateBazelGitignore()
+		} else if cfg.PackageManager == "meson" {
+			gitignore = templates.GenerateMesonGitignore()
 		} else {
 			gitignore = templates.GenerateGitignore()
 		}
@@ -289,6 +359,12 @@ func createProjectFromTUI(config tui.ProjectConfig, getVcpkgPath func() (string,
 			testsBuild := templates.GenerateBuildBazelTests(projectName, cfg.TestFramework)
 			if err := os.WriteFile(filepath.Join(projectName, "tests/BUILD.bazel"), []byte(testsBuild), 0644); err != nil {
 				return fmt.Errorf("failed to write tests/BUILD.bazel: %w", err)
+			}
+		} else if cfg.PackageManager == "meson" {
+			// Generate tests/meson.build for Meson projects
+			testsMeson := templates.GenerateMesonBuildTests(projectName, cfg.TestFramework)
+			if err := os.WriteFile(filepath.Join(projectName, "tests/meson.build"), []byte(testsMeson), 0644); err != nil {
+				return fmt.Errorf("failed to write tests/meson.build: %w", err)
 			}
 		} else {
 			// Generate tests/CMakeLists.txt for CMake projects
@@ -345,5 +421,52 @@ func createProjectFromTUI(config tui.ProjectConfig, getVcpkgPath func() (string,
 	fmt.Printf("\n%s✓ Project '%s' created successfully!%s\n\n", Green, projectName, Reset)
 	fmt.Printf("  cd %s && cpx build && cpx run\n\n", projectName)
 
+	return nil
+}
+
+// downloadMesonWrap copies a wrap from local WrapDB or downloads from WrapDB.mesonbuild.com
+func downloadMesonWrap(projectName, wrapName string) error {
+	destPath := filepath.Join(projectName, "subprojects", wrapName+".wrap")
+
+	// Try local WrapDB first
+	cfg, err := config.LoadGlobal()
+	if err == nil && cfg.WrapdbRoot != "" {
+		localWrap := filepath.Join(cfg.WrapdbRoot, wrapName+".wrap")
+		if _, err := os.Stat(localWrap); err == nil {
+			// Copy from local
+			content, err := os.ReadFile(localWrap)
+			if err != nil {
+				return fmt.Errorf("failed to read local wrap: %w", err)
+			}
+			if err := os.WriteFile(destPath, content, 0644); err != nil {
+				return fmt.Errorf("failed to write wrap file: %w", err)
+			}
+			fmt.Printf("  Copied %s.wrap (from local)\n", wrapName)
+			return nil
+		}
+	}
+
+	// Fallback: download from WrapDB
+	wrapURL := fmt.Sprintf("https://wrapdb.mesonbuild.com/v2/%s.wrap", wrapName)
+	resp, err := http.Get(wrapURL)
+	if err != nil {
+		return fmt.Errorf("failed to download: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("wrap not found (status %d)", resp.StatusCode)
+	}
+
+	wrapContent, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if err := os.WriteFile(destPath, wrapContent, 0644); err != nil {
+		return fmt.Errorf("failed to write wrap file: %w", err)
+	}
+
+	fmt.Printf("  Downloaded %s.wrap\n", wrapName)
 	return nil
 }

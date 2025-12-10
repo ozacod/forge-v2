@@ -122,7 +122,7 @@ func InitialModel() Model {
 		testFrameworkOptions:  []string{"GoogleTest", "Catch2", "doctest", "None"},
 		benchmarkOptions:      []string{"Google Benchmark", "nanobench", "Catch2 benchmark", "None"},
 		clangFormatOptions:    []string{"Google", "LLVM", "Chromium", "Mozilla", "WebKit"},
-		packageManagerOptions: []string{"vcpkg", "Bazel", "None"},
+		packageManagerOptions: []string{"vcpkg", "Bazel", "Meson", "None"},
 		preCommitOptions:      []string{"format", "lint", "cppcheck", "test"},
 		prePushOptions:        []string{"test", "cppcheck"},
 		selectedPreCommit:     map[int]bool{0: true, 1: true},
@@ -321,6 +321,8 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 			m.config.PackageManager = "vcpkg"
 		case 1:
 			m.config.PackageManager = "bazel"
+		case 2:
+			m.config.PackageManager = "meson"
 		default:
 			m.config.PackageManager = "none"
 		}
@@ -474,10 +476,10 @@ func (m Model) View() string {
 	s.WriteString(dimStyle.Render("cpx new") + "\n\n")
 
 	// ASCII Art Logo (smaller)
-	logo := cyanBold.Render(` ██████ ██████  ██   ██ 
-██      ██   ██  ██ ██  
-██      ██████    ███   
-██      ██       ██ ██  
+	logo := cyanBold.Render(` ██████ ██████  ██   ██
+██      ██   ██  ██ ██
+██      ██████    ███
+██      ██       ██ ██
  ██████ ██      ██   ██`)
 
 	s.WriteString(logo + "\n\n")

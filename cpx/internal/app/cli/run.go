@@ -48,6 +48,8 @@ func runRun(cmd *cobra.Command, args []string) error {
 	switch projectType {
 	case ProjectTypeBazel:
 		return runBazelRun(release, target, args, verbose)
+	case ProjectTypeMeson:
+		return runMesonRun(release, target, args, verbose)
 	case ProjectTypeVcpkg:
 		return build.RunProject(release, target, args, verbose, runSetupVcpkgEnvFunc)
 	default:
@@ -101,6 +103,51 @@ func runBazelRun(release bool, target string, args []string, verbose bool) error
 	return runCmd.Run()
 }
 
+func runMesonRun(release bool, target string, args []string, verbose bool) error {
+	// Ensure project is built first
+	if err := runMesonBuild(release, target, false, verbose); err != nil {
+		return fmt.Errorf("build failed: %w", err)
+	}
+
+	// Find executable to run
+	var exePath string
+	if target != "" {
+		exePath = filepath.Join("builddir", target)
+	} else {
+		// Find first executable in builddir
+		entries, err := os.ReadDir("builddir")
+		if err != nil {
+			return fmt.Errorf("could not read builddir: %w", err)
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			info, err := entry.Info()
+			if err != nil {
+				continue
+			}
+			// Check if executable
+			if info.Mode()&0111 != 0 && !strings.HasSuffix(entry.Name(), "_test") && !strings.HasSuffix(entry.Name(), ".a") && !strings.HasSuffix(entry.Name(), ".so") {
+				exePath = filepath.Join("builddir", entry.Name())
+				break
+			}
+		}
+	}
+
+	if exePath == "" {
+		return fmt.Errorf("no executable found in builddir\n  hint: use --target to specify the executable")
+	}
+
+	fmt.Printf("%sRunning %s...%s\n", Cyan, exePath, Reset)
+	runCmd := exec.Command(exePath, args...)
+	runCmd.Stdout = os.Stdout
+	runCmd.Stderr = os.Stderr
+	runCmd.Stdin = os.Stdin
+
+	return runCmd.Run()
+}
+
 // findBazelMainTarget tries to find a cc_binary target in BUILD.bazel
 func findBazelMainTarget() (string, error) {
 	// Read BUILD.bazel
@@ -133,3 +180,5 @@ func findBazelMainTarget() (string, error) {
 	projectName := filepath.Base(cwd)
 	return "//:" + projectName, nil
 }
+
+// runMesonBuild is defined in build.go

@@ -38,12 +38,15 @@ func runTest(cmd *cobra.Command, args []string) error {
 	// Detect project type
 	projectType := DetectProjectType()
 
-	if projectType == ProjectTypeBazel {
+	switch projectType {
+	case ProjectTypeBazel:
 		return runBazelTest(verbose, filter)
+	case ProjectTypeMeson:
+		return runMesonTest(verbose, filter)
+	default:
+		// CMake/vcpkg
+		return build.RunTests(verbose, filter, testSetupVcpkgEnvFunc)
 	}
-
-	// Default: CMake/vcpkg
-	return build.RunTests(verbose, filter, testSetupVcpkgEnvFunc)
 }
 
 func runBazelTest(verbose bool, filter string) error {
@@ -71,6 +74,39 @@ func runBazelTest(verbose bool, filter string) error {
 
 	if err := testCmd.Run(); err != nil {
 		return fmt.Errorf("bazel test failed: %w", err)
+	}
+
+	fmt.Printf("%s✓ Tests passed%s\n", Green, Reset)
+	return nil
+}
+
+func runMesonTest(verbose bool, filter string) error {
+	fmt.Printf("%sRunning Meson tests...%s\n", Cyan, Reset)
+
+	// Ensure builddir exists
+	if _, err := os.Stat("builddir"); os.IsNotExist(err) {
+		// Need to setup first
+		if err := runMesonBuild(false, "", false, verbose); err != nil {
+			return fmt.Errorf("build failed: %w", err)
+		}
+	}
+
+	mesonArgs := []string{"test", "-C", "builddir"}
+
+	if verbose {
+		mesonArgs = append(mesonArgs, "-v")
+	}
+
+	if filter != "" {
+		mesonArgs = append(mesonArgs, filter)
+	}
+
+	testCmd := exec.Command("meson", mesonArgs...)
+	testCmd.Stdout = os.Stdout
+	testCmd.Stderr = os.Stderr
+
+	if err := testCmd.Run(); err != nil {
+		return fmt.Errorf("meson test failed: %w", err)
 	}
 
 	fmt.Printf("%s✓ Tests passed%s\n", Green, Reset)

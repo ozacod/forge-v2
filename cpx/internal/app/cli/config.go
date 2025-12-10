@@ -46,6 +46,15 @@ func ConfigCmd() *cobra.Command {
 	}
 	cmd.AddCommand(setBcrRootCmd)
 
+	setWrapdbRootCmd := &cobra.Command{
+		Use:   "set-wrapdb-root",
+		Short: "Set Meson WrapDB root directory",
+		Long:  "Set the path to the downloaded Meson WrapDB wraps.",
+		RunE:  runConfigSetWrapdbRoot,
+		Args:  cobra.ExactArgs(1),
+	}
+	cmd.AddCommand(setWrapdbRootCmd)
+
 	return cmd
 }
 
@@ -65,6 +74,10 @@ func runConfigSetBcrRoot(cmd *cobra.Command, args []string) error {
 	return setBcrRoot(args[0])
 }
 
+func runConfigSetWrapdbRoot(cmd *cobra.Command, args []string) error {
+	return setWrapdbRoot(args[0])
+}
+
 func showConfig() error {
 	configPath, err := config.GetConfigPath()
 	if err != nil {
@@ -81,8 +94,9 @@ func showConfig() error {
 
 	fmt.Printf("%sCpx Configuration%s\n", Bold, Reset)
 	fmt.Printf("  Config file: %s\n", configPath)
-	fmt.Printf("  vcpkg_root: %s\n", cfg.VcpkgRoot)
-	fmt.Printf("  bcr_root:   %s\n", cfg.BcrRoot)
+	fmt.Printf("  vcpkg_root:  %s\n", cfg.VcpkgRoot)
+	fmt.Printf("  bcr_root:    %s\n", cfg.BcrRoot)
+	fmt.Printf("  wrapdb_root: %s\n", cfg.WrapdbRoot)
 	return nil
 }
 
@@ -98,6 +112,9 @@ func getConfig(key string) error {
 		return nil
 	case "bcr_root", "bcr-root":
 		fmt.Println(cfg.BcrRoot)
+		return nil
+	case "wrapdb_root", "wrapdb-root":
+		fmt.Println(cfg.WrapdbRoot)
 		return nil
 	default:
 		return fmt.Errorf("unknown config key: %s", key)
@@ -172,5 +189,32 @@ func setBcrRoot(path string) error {
 	}
 
 	fmt.Printf("%s✓ Set bcr_root to %s%s\n", Green, absPath, Reset)
+	return nil
+}
+
+func setWrapdbRoot(path string) error {
+	// Validate path exists
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return fmt.Errorf("path does not exist: %s", path)
+	}
+
+	cfg, err := config.LoadGlobal()
+	if err != nil {
+		cfg = &config.GlobalConfig{}
+	}
+
+	// Convert to absolute path
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	cfg.WrapdbRoot = absPath
+
+	if err := config.SaveGlobal(cfg); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	fmt.Printf("%s✓ Set wrapdb_root to %s%s\n", Green, absPath, Reset)
 	return nil
 }

@@ -39,12 +39,15 @@ func runBenchCmd(cmd *cobra.Command, args []string) error {
 	// Detect project type
 	projectType := DetectProjectType()
 
-	if projectType == ProjectTypeBazel {
+	switch projectType {
+	case ProjectTypeBazel:
 		return runBazelBench(verbose, target)
+	case ProjectTypeMeson:
+		return runMesonBench(verbose, target)
+	default:
+		// CMake/vcpkg
+		return build.RunBenchmarks(verbose, benchSetupVcpkgEnvFunc)
 	}
-
-	// Default: CMake/vcpkg
-	return build.RunBenchmarks(verbose, benchSetupVcpkgEnvFunc)
 }
 
 func runBazelBench(verbose bool, target string) error {
@@ -86,6 +89,49 @@ func runBazelBench(verbose bool, target string) error {
 
 	if err := benchCmd.Run(); err != nil {
 		return fmt.Errorf("bazel benchmark failed: %w", err)
+	}
+
+	fmt.Printf("%s✓ Benchmarks complete%s\n", Green, Reset)
+	return nil
+}
+
+func runMesonBench(verbose bool, target string) error {
+	fmt.Printf("%sRunning Meson benchmarks...%s\n", Cyan, Reset)
+
+	// Ensure builddir exists
+	if _, err := os.Stat("builddir"); os.IsNotExist(err) {
+		if err := runMesonBuild(false, "", false, verbose); err != nil {
+			return fmt.Errorf("build failed: %w", err)
+		}
+	}
+
+	// Find benchmark executable
+	var benchPath string
+	if target != "" {
+		benchPath = "builddir/" + target
+	} else {
+		// Look for *_bench executables
+		entries, _ := os.ReadDir("builddir")
+		for _, entry := range entries {
+			if strings.HasSuffix(entry.Name(), "_bench") {
+				benchPath = "builddir/" + entry.Name()
+				break
+			}
+		}
+	}
+
+	if benchPath == "" {
+		return fmt.Errorf("no benchmark executable found\n  hint: use --target to specify the benchmark")
+	}
+
+	fmt.Printf("  Running: %s\n", benchPath)
+
+	benchCmd := exec.Command(benchPath)
+	benchCmd.Stdout = os.Stdout
+	benchCmd.Stderr = os.Stderr
+
+	if err := benchCmd.Run(); err != nil {
+		return fmt.Errorf("benchmark failed: %w", err)
 	}
 
 	fmt.Printf("%s✓ Benchmarks complete%s\n", Green, Reset)

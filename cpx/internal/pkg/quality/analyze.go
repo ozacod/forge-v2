@@ -981,17 +981,17 @@ func generateHTMLReport(analysis ComprehensiveAnalysis, outputFile string) error
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
-        .status-success { 
+        .status-success {
             background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(22, 163, 74, 0.1) 100%);
             color: #22c55e;
             border: 1px solid rgba(34, 197, 94, 0.3);
         }
-        .status-error { 
+        .status-error {
             background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.1) 100%);
             color: #ef4444;
             border: 1px solid rgba(239, 68, 68, 0.3);
         }
-        .status-skipped { 
+        .status-skipped {
             background: rgba(148, 163, 184, 0.15);
             color: #94a3b8;
             border: 1px solid rgba(148, 163, 184, 0.2);
@@ -1049,17 +1049,17 @@ func generateHTMLReport(analysis ComprehensiveAnalysis, outputFile string) error
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
-        .severity-error { 
+        .severity-error {
             background: linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(220, 38, 38, 0.15) 100%);
             color: #ff6b6b;
             border: 1px solid rgba(239, 68, 68, 0.4);
         }
-        .severity-warning { 
+        .severity-warning {
             background: linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(245, 158, 11, 0.15) 100%);
             color: #fbbf24;
             border: 1px solid rgba(251, 191, 36, 0.4);
         }
-        .severity-info { 
+        .severity-info {
             background: linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(37, 99, 235, 0.15) 100%);
             color: #60a5fa;
             border: 1px solid rgba(59, 130, 246, 0.4);
@@ -1259,10 +1259,10 @@ func generateHTMLReport(analysis ComprehensiveAnalysis, outputFile string) error
             // Hide all tabs
             const tabs = document.querySelectorAll('.tab-content');
             const buttons = document.querySelectorAll('.tab-button');
-            
+
             tabs.forEach(tab => tab.classList.remove('active'));
             buttons.forEach(btn => btn.classList.remove('active'));
-            
+
             // Show selected tab
             document.getElementById('tab-' + index).classList.add('active');
             buttons[index].classList.add('active');

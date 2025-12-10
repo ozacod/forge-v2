@@ -11,8 +11,9 @@ import (
 
 // GlobalConfig represents the global cpx configuration
 type GlobalConfig struct {
-	VcpkgRoot string `yaml:"vcpkg_root"`
-	BcrRoot   string `yaml:"bcr_root"` // Bazel Central Registry path
+	VcpkgRoot  string `yaml:"vcpkg_root"`
+	BcrRoot    string `yaml:"bcr_root"`    // Bazel Central Registry path
+	WrapdbRoot string `yaml:"wrapdb_root"` // Meson WrapDB path
 }
 
 // GetConfigDir returns the directory where cpx stores its global config

@@ -1010,6 +1010,304 @@ MIT
 }
 
 // ============================================================================
+// MESON TEMPLATES
+// ============================================================================
+
+// GenerateMesonBuildRoot generates root meson.build
+func GenerateMesonBuildRoot(projectName string, isExe bool, cppStandard int, testFramework, benchmarkFramework string) string {
+	targetType := "executable"
+	if !isExe {
+		targetType = "library"
+	}
+
+	// Build subdir includes
+	subdirs := "subdir('src')\n"
+	if testFramework != "" && testFramework != "none" {
+		subdirs += "subdir('tests')\n"
+	}
+	if benchmarkFramework != "" && benchmarkFramework != "none" {
+		subdirs += "subdir('bench')\n"
+	}
+
+	return fmt.Sprintf(`project('%s', 'cpp',
+  version : '0.1.0',
+  default_options : [
+    'cpp_std=c++%d',
+    'warning_level=3',
+    'buildtype=debugoptimized'
+  ]
+)
+
+# Include directories
+inc_dirs = include_directories('include')
+
+# Subdirectories
+%s
+`, projectName, cppStandard, subdirs) + fmt.Sprintf(`
+# Summary
+summary({
+  'Project': '%s',
+  'Type': '%s',
+  'C++ Standard': 'C++%d',
+}, section: 'Configuration')
+`, projectName, targetType, cppStandard)
+}
+
+// GenerateMesonBuildSrc generates src/meson.build
+func GenerateMesonBuildSrc(projectName string, isExe bool) string {
+	safeName := naming.SafeIdent(projectName)
+
+	if isExe {
+		return fmt.Sprintf(`# Source files
+src_files = files(
+  'main.cpp',
+  '%s.cpp'
+)
+
+# Library (for linking by tests/benchmarks)
+%s_lib = static_library('%s_lib',
+  files('%s.cpp'),
+  include_directories : inc_dirs,
+  install : true
+)
+
+# Executable
+%s_exe = executable('%s',
+  src_files,
+  include_directories : inc_dirs,
+  install : true
+)
+`, projectName, safeName, safeName, projectName, safeName, projectName)
+	}
+
+	// Library only
+	return fmt.Sprintf(`# Source files
+src_files = files(
+  '%s.cpp'
+)
+
+# Library
+%s_lib = library('%s',
+  src_files,
+  include_directories : inc_dirs,
+  install : true
+)
+`, projectName, safeName, projectName)
+}
+
+// GenerateMesonBuildTests generates tests/meson.build
+func GenerateMesonBuildTests(projectName, testFramework string) string {
+	safeName := naming.SafeIdent(projectName)
+
+	var depLine string
+	switch testFramework {
+	case "googletest":
+		depLine = "gtest_dep = dependency('gtest', fallback : ['gtest', 'gtest_main_dep'])"
+	case "catch2":
+		depLine = "catch2_dep = dependency('catch2-with-main', fallback : ['catch2', 'catch2_with_main_dep'])"
+	case "doctest":
+		depLine = "doctest_dep = dependency('doctest', fallback : ['doctest', 'doctest_dep'])"
+	default:
+		depLine = "# No test framework"
+	}
+
+	var depsArg string
+	switch testFramework {
+	case "googletest":
+		depsArg = "gtest_dep"
+	case "catch2":
+		depsArg = "catch2_dep"
+	case "doctest":
+		depsArg = "doctest_dep"
+	default:
+		depsArg = ""
+	}
+
+	if depsArg != "" {
+		depsArg = ",\n  dependencies : [" + depsArg + "]"
+	}
+
+	return fmt.Sprintf(`# Test dependencies
+%s
+
+# Test executable
+test_exe = executable('%s_test',
+  files('test_main.cpp'),
+  include_directories : inc_dirs,
+  link_with : %s_lib%s
+)
+
+# Register test
+test('%s tests', test_exe)
+`, depLine, projectName, safeName, depsArg, projectName)
+}
+
+// GenerateMesonBuildBench generates bench/meson.build
+func GenerateMesonBuildBench(projectName, benchmarkFramework string) string {
+	safeName := naming.SafeIdent(projectName)
+
+	var depLine, depsArg string
+	switch benchmarkFramework {
+	case "google-benchmark":
+		depLine = "benchmark_dep = dependency('benchmark', fallback : ['google-benchmark', 'google_benchmark_dep'])"
+		depsArg = "benchmark_dep"
+	case "nanobench":
+		depLine = "# nanobench is header-only"
+		depsArg = ""
+	case "catch2-benchmark":
+		depLine = "catch2_dep = dependency('catch2-with-main', fallback : ['catch2', 'catch2_with_main_dep'])"
+		depsArg = "catch2_dep"
+	default:
+		depLine = "# No benchmark framework"
+		depsArg = ""
+	}
+
+	if depsArg != "" {
+		depsArg = ",\n  dependencies : [" + depsArg + "]"
+	}
+
+	return fmt.Sprintf(`# Benchmark dependencies
+%s
+
+# Benchmark executable
+bench_exe = executable('%s_bench',
+  files('bench_main.cpp'),
+  include_directories : inc_dirs,
+  link_with : %s_lib%s
+)
+
+# Run benchmark (not as a test, just build)
+`, depLine, projectName, safeName, depsArg)
+}
+
+// GenerateMesonOptions generates meson.options
+func GenerateMesonOptions() string {
+	return `# Build options
+option('enable_tests', type : 'boolean', value : true,
+       description : 'Enable building tests')
+
+option('enable_benchmarks', type : 'boolean', value : true,
+       description : 'Enable building benchmarks')
+`
+}
+
+// GenerateMesonGitignore generates .gitignore for Meson projects
+func GenerateMesonGitignore() string {
+	return `# Meson build directory
+builddir/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Cache
+.cache/
+
+# Compiled files
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+`
+}
+
+// GenerateMesonReadme generates README with Meson instructions
+func GenerateMesonReadme(projectName string, cppStandard int, isLib bool) string {
+	codeBlock := "```"
+	if isLib {
+		return fmt.Sprintf(`# %s
+
+A C++ library using Meson for builds.
+
+## Requirements
+
+- C++%d compatible compiler
+- Meson (>= 0.60.0)
+- Ninja (recommended backend)
+
+## Building
+
+%sbash
+# Configure
+cpx build
+# Or manually:
+meson setup builddir
+meson compile -C builddir
+%s
+
+## Testing
+
+%sbash
+cpx test
+# Or manually:
+meson test -C builddir
+%s
+
+## Adding Dependencies
+
+%sbash
+cpx add <package-name>
+%s
+
+This downloads wrap files to subprojects/ directory.
+
+## License
+
+MIT
+`, projectName, cppStandard, codeBlock, codeBlock, codeBlock, codeBlock, codeBlock, codeBlock)
+	}
+
+	// Executable project
+	return fmt.Sprintf(`# %s
+
+A C++ application using Meson for builds.
+
+## Requirements
+
+- C++%d compatible compiler
+- Meson (>= 0.60.0)
+- Ninja (recommended backend)
+
+## Building
+
+%sbash
+cpx build
+%s
+
+## Running
+
+%sbash
+cpx run
+%s
+
+## Testing
+
+%sbash
+cpx test
+%s
+
+## Adding Dependencies
+
+%sbash
+cpx add <package-name>
+%s
+
+This downloads wrap files to subprojects/ directory.
+
+## License
+
+MIT
+`, projectName, cppStandard, codeBlock, codeBlock, codeBlock, codeBlock, codeBlock, codeBlock, codeBlock, codeBlock)
+}
+
+// ============================================================================
 // Benchmark Source Templates
 // ============================================================================
 

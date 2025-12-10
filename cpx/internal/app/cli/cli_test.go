@@ -31,6 +31,11 @@ func TestDetectProjectType(t *testing.T) {
 			expected: ProjectTypeUnknown,
 		},
 		{
+			name:     "Meson project",
+			files:    map[string]string{"meson.build": "project('test', 'cpp')"},
+			expected: ProjectTypeMeson,
+		},
+		{
 			name:     "Vcpkg takes priority over Bazel",
 			files:    map[string]string{"MODULE.bazel": "# bazel", "vcpkg.json": "{}"},
 			expected: ProjectTypeVcpkg,
