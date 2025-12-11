@@ -34,6 +34,15 @@ func CICmd() *cobra.Command {
 	initCmd.Flags().Bool("gitlab", false, "Generate GitLab CI configuration")
 	cmd.AddCommand(initCmd)
 
+	// Add add-target subcommand
+	addTargetCmd := &cobra.Command{
+		Use:   "add-target",
+		Short: "Add a build target to cpx.ci",
+		Long:  "Scan available Dockerfiles and add a build target to cpx.ci configuration.",
+		RunE:  runAddTarget,
+	}
+	cmd.AddCommand(addTargetCmd)
+
 	return cmd
 }
 
@@ -70,6 +79,167 @@ func runCIInit(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
+}
+
+// runAddTarget scans available Dockerfiles and adds selected targets to cpx.ci
+func runAddTarget(_ *cobra.Command, _ []string) error {
+	// Get dockerfiles directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+	dockerfilesDir := filepath.Join(homeDir, ".config", "cpx", "dockerfiles")
+
+	// Check if directory exists
+	if _, err := os.Stat(dockerfilesDir); os.IsNotExist(err) {
+		return fmt.Errorf("dockerfiles directory not found: %s\n  Run 'cpx upgrade' to download Dockerfiles", dockerfilesDir)
+	}
+
+	// Scan for Dockerfile.* files
+	entries, err := os.ReadDir(dockerfilesDir)
+	if err != nil {
+		return fmt.Errorf("failed to read dockerfiles directory: %w", err)
+	}
+
+	var availableTargets []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if strings.HasPrefix(name, "Dockerfile.") && !strings.HasSuffix(name, ".example") {
+			targetName := strings.TrimPrefix(name, "Dockerfile.")
+			availableTargets = append(availableTargets, targetName)
+		}
+	}
+
+	if len(availableTargets) == 0 {
+		return fmt.Errorf("no Dockerfiles found in %s", dockerfilesDir)
+	}
+
+	// Load existing cpx.ci or create new one
+	ciConfig, err := config.LoadCI("cpx.ci")
+	if err != nil {
+		// Create new config
+		ciConfig = &config.CIConfig{
+			Targets: []config.CITarget{},
+			Build: config.CIBuild{
+				Type:         "Release",
+				Optimization: "2",
+				Jobs:         0,
+			},
+			Output: ".bin/ci",
+		}
+	}
+
+	// Get existing target names to avoid duplicates
+	existingTargets := make(map[string]bool)
+	for _, t := range ciConfig.Targets {
+		existingTargets[t.Name] = true
+	}
+
+	// Filter out already added targets
+	var newTargets []string
+	for _, t := range availableTargets {
+		if !existingTargets[t] {
+			newTargets = append(newTargets, t)
+		}
+	}
+
+	if len(newTargets) == 0 {
+		fmt.Printf("%sAll available targets are already in cpx.ci%s\n", Yellow, Reset)
+		return nil
+	}
+
+	// Print available targets for selection
+	fmt.Printf("%sAvailable targets:%s\n", Cyan, Reset)
+	for i, t := range newTargets {
+		fmt.Printf("  %d. %s\n", i+1, t)
+	}
+
+	// Simple selection - add all for now (TUI can be added later)
+	fmt.Printf("\n%sEnter target numbers to add (comma-separated, or 'all'):%s ", Cyan, Reset)
+	var input string
+	fmt.Scanln(&input)
+
+	var selectedTargets []string
+	if strings.ToLower(strings.TrimSpace(input)) == "all" {
+		selectedTargets = newTargets
+	} else {
+		// Parse comma-separated numbers
+		parts := strings.Split(input, ",")
+		for _, part := range parts {
+			part = strings.TrimSpace(part)
+			var idx int
+			if _, err := fmt.Sscanf(part, "%d", &idx); err == nil {
+				if idx >= 1 && idx <= len(newTargets) {
+					selectedTargets = append(selectedTargets, newTargets[idx-1])
+				}
+			}
+		}
+	}
+
+	if len(selectedTargets) == 0 {
+		fmt.Printf("%sNo targets selected%s\n", Yellow, Reset)
+		return nil
+	}
+
+	// Add selected targets
+	for _, targetName := range selectedTargets {
+		target := deriveTargetConfig(targetName)
+		ciConfig.Targets = append(ciConfig.Targets, target)
+		fmt.Printf("%s+ Added target: %s%s\n", Green, targetName, Reset)
+	}
+
+	// Save cpx.ci
+	if err := config.SaveCI(ciConfig, "cpx.ci"); err != nil {
+		return err
+	}
+
+	fmt.Printf("\n%sSaved cpx.ci with %d target(s)%s\n", Green, len(ciConfig.Targets), Reset)
+	return nil
+}
+
+// deriveTargetConfig derives a CITarget from a target name
+func deriveTargetConfig(name string) config.CITarget {
+	target := config.CITarget{
+		Name:       name,
+		Dockerfile: "Dockerfile." + name,
+		Image:      "cpx-" + name,
+	}
+
+	// Derive triplet and platform from name
+	parts := strings.Split(name, "-")
+	if len(parts) >= 2 {
+		os := parts[0]   // linux, windows, macos
+		arch := parts[1] // amd64, arm64
+
+		switch os {
+		case "linux":
+			if arch == "amd64" {
+				target.Triplet = "x64-linux"
+				target.Platform = "linux/amd64"
+			} else if arch == "arm64" {
+				target.Triplet = "arm64-linux"
+				target.Platform = "linux/arm64"
+			}
+		case "windows":
+			if arch == "amd64" {
+				target.Triplet = "x64-mingw-static"
+				target.Platform = "linux/amd64" // Cross-compile from Linux
+			}
+		case "macos":
+			if arch == "amd64" {
+				target.Triplet = "x64-osx"
+				target.Platform = "linux/amd64" // Requires osxcross
+			} else if arch == "arm64" {
+				target.Triplet = "arm64-osx"
+				target.Platform = "linux/arm64"
+			}
+		}
+	}
+
+	return target
 }
 
 var ciCommandExecuted = false
