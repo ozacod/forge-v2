@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 )
 
 // FindExecutables finds all executables in the build directory
@@ -61,9 +63,9 @@ func FindExecutables(buildDir string) ([]string, error) {
 }
 
 // RunProject builds and runs the project
-func RunProject(release bool, target string, execArgs []string, verbose bool, optLevel string, setupVcpkgEnv func() error) error {
+func RunProject(release bool, target string, execArgs []string, verbose bool, optLevel string, vcpkgClient *vcpkg.Client) error {
 	// Set VCPKG_ROOT from cpx config if not already set
-	if err := setupVcpkgEnv(); err != nil {
+	if err := vcpkgClient.SetupEnv(); err != nil {
 		return err
 	}
 

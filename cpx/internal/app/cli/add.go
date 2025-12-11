@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/ozacod/cpx/internal/pkg/bazel"
+	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 	"github.com/spf13/cobra"
 )
 
@@ -28,8 +29,10 @@ func init() {
 }
 
 // AddCmd creates the add command
-func AddCmd(runVcpkgCommand func([]string) error, getBcrPath func() string) *cobra.Command {
-	addRunVcpkgCommandFunc = runVcpkgCommand
+func AddCmd(client *vcpkg.Client, getBcrPath func() string) *cobra.Command {
+	if client != nil {
+		addRunVcpkgCommandFunc = client.RunCommand
+	}
 	addGetBcrPathFunc = getBcrPath
 
 	cmd := &cobra.Command{
@@ -39,14 +42,16 @@ func AddCmd(runVcpkgCommand func([]string) error, getBcrPath func() string) *cob
 
 For vcpkg projects: passes through to 'vcpkg add port' and prints usage info.
 For Bazel projects: fetches the latest version from BCR and updates MODULE.bazel.`,
-		RunE: runAdd,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAdd(cmd, args, client)
+		},
 		Args: cobra.MinimumNArgs(1),
 	}
 
 	return cmd
 }
 
-func runAdd(_ *cobra.Command, args []string) error {
+func runAdd(_ *cobra.Command, args []string, client *vcpkg.Client) error {
 	projectType, err := RequireProject("cpx add")
 	if err != nil {
 		return err
@@ -54,7 +59,7 @@ func runAdd(_ *cobra.Command, args []string) error {
 
 	switch projectType {
 	case ProjectTypeVcpkg:
-		return runVcpkgAdd(args)
+		return runVcpkgAdd(args, client)
 	case ProjectTypeBazel:
 		return runBazelAdd(args)
 	case ProjectTypeMeson:
@@ -64,13 +69,23 @@ func runAdd(_ *cobra.Command, args []string) error {
 	}
 }
 
-func runVcpkgAdd(args []string) error {
+func runVcpkgAdd(args []string, client *vcpkg.Client) error {
 	// Directly pass all arguments to vcpkg add command
 	// cpx add <pkg> -> vcpkg add port <pkg>
 	vcpkgArgs := []string{"add", "port"}
 	vcpkgArgs = append(vcpkgArgs, args...)
 
-	if err := addRunVcpkgCommandFunc(vcpkgArgs); err != nil {
+	var runFunc func([]string) error
+	if addRunVcpkgCommandFunc != nil {
+		runFunc = addRunVcpkgCommandFunc
+	} else if client != nil {
+		runFunc = client.RunCommand
+	}
+
+	if runFunc == nil {
+		return fmt.Errorf("vcpkg client not initialized")
+	}
+	if err := runFunc(vcpkgArgs); err != nil {
 		return err
 	}
 

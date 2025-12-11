@@ -6,35 +6,34 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/ozacod/cpx/internal/app/cli/tui"
 	"github.com/ozacod/cpx/internal/pkg/git"
 	"github.com/ozacod/cpx/internal/pkg/templates"
+	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 	"github.com/spf13/cobra"
 )
 
-var newGetVcpkgPathFunc func() (string, error)
-var newSetupVcpkgProjectFunc func(string, string, bool, []string) error
-
 // NewCmd creates the new command with interactive TUI
-func NewCmd(getVcpkgPath func() (string, error), setupVcpkgProject func(string, string, bool, []string) error) *cobra.Command {
-	newGetVcpkgPathFunc = getVcpkgPath
-	newSetupVcpkgProjectFunc = setupVcpkgProject
-
+func NewCmd(client *vcpkg.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "new",
 		Short: "Create a new C++ project (interactive)",
 		Long:  "Create a new C++ project using an interactive TUI. This will guide you through the project configuration.",
 		Example: `  cpx new            # launch the interactive creator
   cpx new --help    # view options`,
-		RunE: runNew,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runNew(cmd, args, client)
+		},
 		Args: cobra.NoArgs,
 	}
 
 	return cmd
 }
 
-func runNew(_ *cobra.Command, _ []string) error {
+func runNew(_ *cobra.Command, _ []string, client *vcpkg.Client) error {
 	// Initialize and run the TUI
 	p := tea.NewProgram(tui.InitialModel())
 	m, err := p.Run()
@@ -57,10 +56,10 @@ func runNew(_ *cobra.Command, _ []string) error {
 	config := finalModel.GetConfig()
 
 	// Create the project with the configuration
-	return createProjectFromTUI(config, newGetVcpkgPathFunc, newSetupVcpkgProjectFunc)
+	return createProjectFromTUI(config, client)
 }
 
-func createProjectFromTUI(config tui.ProjectConfig, getVcpkgPath func() (string, error), setupVcpkgProject func(string, string, bool, []string) error) error {
+func createProjectFromTUI(config tui.ProjectConfig, vcpkgClient *vcpkg.Client) error {
 	projectName := config.Name
 
 	// Check if directory already exists
@@ -385,9 +384,11 @@ func createProjectFromTUI(config tui.ProjectConfig, getVcpkgPath func() (string,
 
 	// Setup vcpkg if enabled (skip for bazel)
 	if cfg.PackageManager == "vcpkg" {
-		vcpkgPath, err := getVcpkgPath()
-		if err == nil && vcpkgPath != "" {
-			_ = setupVcpkgProject(projectName, projectName, cfg.IsLibrary, []string{})
+		if vcpkgClient != nil {
+			vcpkgPath, err := vcpkgClient.GetPath()
+			if err == nil && vcpkgPath != "" {
+				_ = setupVcpkgProject(vcpkgClient, projectName, projectName, cfg.IsLibrary, []string{})
+			}
 		}
 	}
 
@@ -439,5 +440,58 @@ func downloadMesonWrap(projectName, wrapName string) error {
 	}
 
 	fmt.Printf("  Installed %s.wrap\n", wrapName)
+	return nil
+}
+
+func setupVcpkgProject(client *vcpkg.Client, targetDir, _ string, _ bool, dependencies []string) error {
+	vcpkgPath, err := client.GetPath()
+	if err != nil {
+		return fmt.Errorf("vcpkg not configured: %w\n   Run: cpx config set-vcpkg-root <path>", err)
+	}
+
+	originalDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %w", err)
+	}
+	defer os.Chdir(originalDir)
+
+	if err := os.Chdir(targetDir); err != nil {
+		return fmt.Errorf("failed to change to project directory: %w", err)
+	}
+
+	vcpkgCmd := exec.Command(vcpkgPath, "new", "--application")
+	vcpkgCmd.Stdout = os.Stdout
+	vcpkgCmd.Stderr = os.Stderr
+	vcpkgCmd.Env = os.Environ()
+	for i, env := range vcpkgCmd.Env {
+		if strings.HasPrefix(env, "VCPKG_ROOT=") {
+			vcpkgCmd.Env = append(vcpkgCmd.Env[:i], vcpkgCmd.Env[i+1:]...)
+			break
+		}
+	}
+	if err := vcpkgCmd.Run(); err != nil {
+		return fmt.Errorf("failed to initialize vcpkg.json: %w", err)
+	}
+
+	if len(dependencies) > 0 {
+		fmt.Printf("%s Adding dependencies from template...%s\n", Cyan, Reset)
+		for _, dep := range dependencies {
+			if dep == "" {
+				continue
+			}
+			fmt.Printf("   Adding %s...\n", dep)
+			// vcpkg add requires "port" or "artifact" as the second argument
+			// We're adding ports (packages), so use "port"
+			addCmd := exec.Command(vcpkgPath, "add", "port", dep)
+			addCmd.Stdout = os.Stdout
+			addCmd.Stderr = os.Stderr
+			addCmd.Env = vcpkgCmd.Env // Use same environment
+			if err := addCmd.Run(); err != nil {
+				fmt.Printf("%s  Warning: Failed to add dependency '%s': %v%s\n", Yellow, dep, err, Reset)
+				// Continue with other dependencies even if one fails
+			}
+		}
+	}
+
 	return nil
 }

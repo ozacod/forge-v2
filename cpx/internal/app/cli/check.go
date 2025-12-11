@@ -6,20 +6,19 @@ import (
 	"os/exec"
 
 	"github.com/ozacod/cpx/internal/pkg/build"
+	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 	"github.com/spf13/cobra"
 )
 
-var checkSetupVcpkgEnvFunc func() error
-
 // CheckCmd creates the check command
-func CheckCmd(setupVcpkgEnv func() error) *cobra.Command {
-	checkSetupVcpkgEnvFunc = setupVcpkgEnv
-
+func CheckCmd(client *vcpkg.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "check",
 		Short: "Check code compiles with sanitizers",
 		Long:  "Check code compiles with sanitizers (--asan, --tsan, --msan, --ubsan). Only one sanitizer can be enabled at a time.",
-		RunE:  runCheck,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runCheck(cmd, args, client)
+		},
 	}
 
 	cmd.Flags().Bool("asan", false, "Build with AddressSanitizer")
@@ -30,7 +29,7 @@ func CheckCmd(setupVcpkgEnv func() error) *cobra.Command {
 	return cmd
 }
 
-func runCheck(cmd *cobra.Command, _ []string) error {
+func runCheck(cmd *cobra.Command, _ []string, client *vcpkg.Client) error {
 	asan, _ := cmd.Flags().GetBool("asan")
 	tsan, _ := cmd.Flags().GetBool("tsan")
 	msan, _ := cmd.Flags().GetBool("msan")
@@ -69,12 +68,12 @@ func runCheck(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("no sanitizer specified. Use --asan, --tsan, --msan, or --ubsan")
 	}
 
-	return checkCode(sanitizer, checkSetupVcpkgEnvFunc)
+	return checkCode(sanitizer, client)
 }
 
-func checkCode(sanitizer string, setupVcpkgEnv func() error) error {
+func checkCode(sanitizer string, vcpkgClient *vcpkg.Client) error {
 	// Set VCPKG_ROOT from cpx config if not already set
-	if err := setupVcpkgEnv(); err != nil {
+	if err := vcpkgClient.SetupEnv(); err != nil {
 		return err
 	}
 

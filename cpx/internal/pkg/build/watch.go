@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 )
 
 // WatchConfig holds configuration for file watching
@@ -95,7 +97,7 @@ func DetectChanges(old, new FileSnapshot) []string {
 }
 
 // WatchAndBuild watches for file changes and triggers rebuilds
-func WatchAndBuild(release bool, jobs int, target string, optLevel string, verbose bool, setupVcpkgEnv func() error) error {
+func WatchAndBuild(release bool, jobs int, target string, optLevel string, verbose bool, vcpkgClient *vcpkg.Client) error {
 	config := DefaultWatchConfig()
 
 	fmt.Printf("\033[36m👀 Watching for changes in: %s\033[0m\n", strings.Join(config.Directories, ", "))
@@ -104,7 +106,7 @@ func WatchAndBuild(release bool, jobs int, target string, optLevel string, verbo
 
 	// Initial build
 	fmt.Printf("\033[36m🔨 Initial build...\033[0m\n")
-	if err := BuildProject(release, jobs, target, false, optLevel, verbose, setupVcpkgEnv); err != nil {
+	if err := BuildProject(release, jobs, target, false, optLevel, verbose, vcpkgClient); err != nil {
 		fmt.Printf("\033[31m✗ Build failed: %v\033[0m\n", err)
 	}
 
@@ -133,7 +135,7 @@ func WatchAndBuild(release bool, jobs int, target string, optLevel string, verbo
 			}
 			fmt.Printf("\n\033[36m🔨 Rebuilding...\033[0m\n")
 
-			if err := BuildProject(release, jobs, target, false, optLevel, verbose, setupVcpkgEnv); err != nil {
+			if err := BuildProject(release, jobs, target, false, optLevel, verbose, vcpkgClient); err != nil {
 				fmt.Printf("\033[31m✗ Build failed: %v\033[0m\n", err)
 			} else {
 				fmt.Printf("\033[32m✓ Build succeeded\033[0m\n")

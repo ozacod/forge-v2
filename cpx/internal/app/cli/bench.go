@@ -7,15 +7,12 @@ import (
 	"strings"
 
 	"github.com/ozacod/cpx/internal/pkg/build"
+	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 	"github.com/spf13/cobra"
 )
 
-var benchSetupVcpkgEnvFunc func() error
-
 // BenchCmd creates the bench command
-func BenchCmd(setupVcpkgEnv func() error) *cobra.Command {
-	benchSetupVcpkgEnvFunc = setupVcpkgEnv
-
+func BenchCmd(client *vcpkg.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "bench",
 		Short: "Build and run benchmarks",
@@ -23,7 +20,9 @@ func BenchCmd(setupVcpkgEnv func() error) *cobra.Command {
 		Example: `  cpx bench            # Build + run all benchmarks
   cpx bench --verbose  # Show verbose output
   cpx bench --target //bench:myapp_bench  # Run specific benchmark (Bazel)`,
-		RunE: runBenchCmd,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runBenchCmd(cmd, args, client)
+		},
 	}
 
 	cmd.Flags().BoolP("verbose", "v", false, "Show verbose build output")
@@ -32,7 +31,7 @@ func BenchCmd(setupVcpkgEnv func() error) *cobra.Command {
 	return cmd
 }
 
-func runBenchCmd(cmd *cobra.Command, args []string) error {
+func runBenchCmd(cmd *cobra.Command, args []string, client *vcpkg.Client) error {
 	verbose, _ := cmd.Flags().GetBool("verbose")
 	target, _ := cmd.Flags().GetString("target")
 
@@ -45,8 +44,8 @@ func runBenchCmd(cmd *cobra.Command, args []string) error {
 	case ProjectTypeMeson:
 		return runMesonBench(verbose, target)
 	default:
-		// CMake/vcpkg
-		return build.RunBenchmarks(verbose, benchSetupVcpkgEnvFunc)
+		// Fall back to CMake
+		return build.RunBenchmarks(verbose, client)
 	}
 }
 

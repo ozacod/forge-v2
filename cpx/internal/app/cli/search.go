@@ -4,29 +4,26 @@ import (
 	"fmt"
 
 	"github.com/ozacod/cpx/internal/app/cli/tui"
+	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 	"github.com/spf13/cobra"
 )
 
-var searchRunVcpkgCommandFunc func([]string) error
-var searchGetVcpkgPath func() (string, error)
-
 // SearchCmd creates the search command
-func SearchCmd(runVcpkgCommand func([]string) error, getVcpkgPath func() (string, error)) *cobra.Command {
-	searchRunVcpkgCommandFunc = runVcpkgCommand
-	searchGetVcpkgPath = getVcpkgPath
-
+func SearchCmd(client *vcpkg.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "search [query]",
 		Short: "Search for libraries interactively",
 		Long:  "Search for libraries using an interactive TUI. Select packages to add them to your project.",
-		RunE:  runSearch,
-		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runSearch(cmd, args, client)
+		},
+		Args: cobra.MaximumNArgs(1),
 	}
 
 	return cmd
 }
 
-func runSearch(_ *cobra.Command, args []string) error {
+func runSearch(_ *cobra.Command, args []string, client *vcpkg.Client) error {
 	query := ""
 	if len(args) > 0 {
 		query = args[0]
@@ -36,10 +33,14 @@ func runSearch(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	vcpkgPath, err := searchGetVcpkgPath()
+	if client == nil {
+		return fmt.Errorf("vcpkg client not initialized")
+	}
+
+	vcpkgPath, err := client.GetPath()
 	if err != nil {
 		return fmt.Errorf("failed to get vcpkg path: %w", err)
 	}
 
-	return tui.RunSearch(query, vcpkgPath, searchRunVcpkgCommandFunc)
+	return tui.RunSearch(query, vcpkgPath, client.RunCommand)
 }

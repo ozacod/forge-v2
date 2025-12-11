@@ -47,12 +47,20 @@ func (c *Client) SetupEnv() error {
 		}
 	}
 
-	// Disable registry update check to speed up builds
-	// Packages will still be cached and reused
+	// Set VCPKG_DISABLE_REGISTRY_UPDATE=1 if not already set
 	if os.Getenv("VCPKG_DISABLE_REGISTRY_UPDATE") == "" {
 		if err := os.Setenv("VCPKG_DISABLE_REGISTRY_UPDATE", "1"); err != nil {
 			return fmt.Errorf("failed to set VCPKG_DISABLE_REGISTRY_UPDATE: %w", err)
 		}
+	}
+
+	if os.Getenv("CPX_DEBUG") != "" {
+		const Cyan = "\033[36m"
+		const Reset = "\033[0m"
+		fmt.Printf("%s[DEBUG] VCPKG Environment:%s\n", Cyan, Reset)
+		fmt.Printf("  VCPKG_ROOT=%s\n", os.Getenv("VCPKG_ROOT"))
+		fmt.Printf("  VCPKG_FEATURE_FLAGS=%s\n", os.Getenv("VCPKG_FEATURE_FLAGS"))
+		fmt.Printf("  VCPKG_DISABLE_REGISTRY_UPDATE=%s\n", os.Getenv("VCPKG_DISABLE_REGISTRY_UPDATE"))
 	}
 
 	return nil
@@ -112,4 +120,3 @@ func (c *Client) RunCommand(args []string) error {
 	}
 	return cmd.Run()
 }
-

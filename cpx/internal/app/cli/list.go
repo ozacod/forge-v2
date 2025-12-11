@@ -1,30 +1,34 @@
 package cli
 
 import (
+	"fmt"
+
+	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 	"github.com/spf13/cobra"
 )
 
-var listRunVcpkgCommandFunc func([]string) error
-
 // ListCmd creates the list command
-func ListCmd(runVcpkgCommand func([]string) error) *cobra.Command {
-	listRunVcpkgCommandFunc = runVcpkgCommand
-
+func ListCmd(client *vcpkg.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List available libraries",
 		Long:  "List available libraries. Passes through to vcpkg list command.",
-		RunE:  runList,
-		Args:  cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runList(cmd, args, client)
+		},
+		Args: cobra.ArbitraryArgs,
 	}
 
 	return cmd
 }
 
-func runList(_ *cobra.Command, args []string) error {
+func runList(_ *cobra.Command, args []string, client *vcpkg.Client) error {
 	// Directly pass all arguments to vcpkg list command
 	vcpkgArgs := []string{"list"}
 	vcpkgArgs = append(vcpkgArgs, args...)
 
-	return listRunVcpkgCommandFunc(vcpkgArgs)
+	if client == nil {
+		return fmt.Errorf("vcpkg client not initialized")
+	}
+	return client.RunCommand(vcpkgArgs)
 }

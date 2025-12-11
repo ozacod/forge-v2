@@ -6,15 +6,12 @@ import (
 	"path/filepath"
 
 	"github.com/ozacod/cpx/internal/pkg/build"
+	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 	"github.com/spf13/cobra"
 )
 
-var setupVcpkgEnvFunc func() error
-
 // BuildCmd creates the build command
-func BuildCmd(setupVcpkgEnv func() error) *cobra.Command {
-	setupVcpkgEnvFunc = setupVcpkgEnv
-
+func BuildCmd(client *vcpkg.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "build",
 		Short: "Compile the project",
@@ -27,7 +24,9 @@ func BuildCmd(setupVcpkgEnv func() error) *cobra.Command {
   cpx build -j 8         # Use 8 parallel jobs
   cpx build --clean      # Clean rebuild
   cpx build --watch      # Watch for changes and rebuild`,
-		RunE: runBuild,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runBuild(cmd, args, client)
+		},
 	}
 
 	cmd.Flags().BoolP("release", "r", false, "Release build (-O2). Default is debug")
@@ -42,7 +41,7 @@ func BuildCmd(setupVcpkgEnv func() error) *cobra.Command {
 	return cmd
 }
 
-func runBuild(cmd *cobra.Command, args []string) error {
+func runBuild(cmd *cobra.Command, args []string, client *vcpkg.Client) error {
 	release, _ := cmd.Flags().GetBool("release")
 	jobs, _ := cmd.Flags().GetInt("jobs")
 	target, _ := cmd.Flags().GetString("target")
@@ -68,15 +67,15 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		return runMesonBuild(release, target, clean, verbose, optLevel)
 	case ProjectTypeVcpkg:
 		if watch {
-			return build.WatchAndBuild(release, jobs, target, optLevel, verbose, setupVcpkgEnvFunc)
+			return build.WatchAndBuild(release, jobs, target, optLevel, verbose, client)
 		}
-		return build.BuildProject(release, jobs, target, clean, optLevel, verbose, setupVcpkgEnvFunc)
+		return build.BuildProject(release, jobs, target, clean, optLevel, verbose, client)
 	default:
 		// Fall back to CMake build even without vcpkg.json
 		if watch {
-			return build.WatchAndBuild(release, jobs, target, optLevel, verbose, setupVcpkgEnvFunc)
+			return build.WatchAndBuild(release, jobs, target, optLevel, verbose, client)
 		}
-		return build.BuildProject(release, jobs, target, clean, optLevel, verbose, setupVcpkgEnvFunc)
+		return build.BuildProject(release, jobs, target, clean, optLevel, verbose, client)
 	}
 }
 

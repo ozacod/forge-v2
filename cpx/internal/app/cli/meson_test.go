@@ -180,11 +180,7 @@ func TestCreateProjectFromTUI_Meson(t *testing.T) {
 		VCS:            "git",
 	}
 
-	// Mock delegates
-	getVcpkgPath := func() (string, error) { return "", nil }
-	setupVcpkgProject := func(name, vcpkgPath string, isLib bool, deps []string) error { return nil }
-
-	err = createProjectFromTUI(config, getVcpkgPath, setupVcpkgProject)
+	err = createProjectFromTUI(config, nil)
 	assert.NoError(t, err)
 
 	// Verify files created

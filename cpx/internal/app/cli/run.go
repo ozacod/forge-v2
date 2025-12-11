@@ -7,15 +7,12 @@ import (
 	"strings"
 
 	"github.com/ozacod/cpx/internal/pkg/build"
+	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 	"github.com/spf13/cobra"
 )
 
-var runSetupVcpkgEnvFunc func() error
-
 // RunCmd creates the run command
-func RunCmd(setupVcpkgEnv func() error) *cobra.Command {
-	runSetupVcpkgEnvFunc = setupVcpkgEnv
-
+func RunCmd(client *vcpkg.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Build and run the project",
@@ -27,7 +24,9 @@ Arguments after -- are passed to the binary.`,
 		Example: `  cpx run                 # Debug build by default
   cpx run --release        # Release build, then run
   cpx run --target app -- --flag value`,
-		RunE: runRun,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runRun(cmd, args, client)
+		},
 	}
 
 	cmd.Flags().Bool("release", false, "Build in release mode (-O2). Default is debug")
@@ -38,7 +37,7 @@ Arguments after -- are passed to the binary.`,
 	return cmd
 }
 
-func runRun(cmd *cobra.Command, args []string) error {
+func runRun(cmd *cobra.Command, args []string, client *vcpkg.Client) error {
 	release, _ := cmd.Flags().GetBool("release")
 	target, _ := cmd.Flags().GetString("target")
 	optLevel, _ := cmd.Flags().GetString("opt")
@@ -52,10 +51,10 @@ func runRun(cmd *cobra.Command, args []string) error {
 	case ProjectTypeMeson:
 		return runMesonRun(release, target, args, verbose, optLevel)
 	case ProjectTypeVcpkg:
-		return build.RunProject(release, target, args, verbose, optLevel, runSetupVcpkgEnvFunc)
+		return build.RunProject(release, target, args, verbose, optLevel, client)
 	default:
 		// Fall back to CMake run even without vcpkg.json
-		return build.RunProject(release, target, args, verbose, optLevel, runSetupVcpkgEnvFunc)
+		return build.RunProject(release, target, args, verbose, optLevel, client)
 	}
 }
 

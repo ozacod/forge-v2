@@ -450,7 +450,7 @@ func runLintAnalysis(vcpkg VcpkgSetup) ToolResults {
 	}
 
 	// Set up vcpkg environment
-	if err := vcpkg.SetupVcpkgEnv(); err != nil {
+	if err := vcpkg.SetupEnv(); err != nil {
 		result.Status = "error"
 		result.Error = fmt.Sprintf("failed to setup vcpkg: %v", err)
 		return result

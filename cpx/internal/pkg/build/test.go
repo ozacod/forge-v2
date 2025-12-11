@@ -5,12 +5,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 )
 
 // RunTests runs the project tests
-func RunTests(verbose bool, filter string, setupVcpkgEnv func() error) error {
+func RunTests(verbose bool, filter string, vcpkgClient *vcpkg.Client) error {
 	// Set VCPKG_ROOT from cpx config if not already set
-	if err := setupVcpkgEnv(); err != nil {
+	if err := vcpkgClient.SetupEnv(); err != nil {
 		return err
 	}
 

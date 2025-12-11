@@ -10,8 +10,8 @@ import (
 
 // VcpkgSetup is an interface for vcpkg operations needed by lint
 type VcpkgSetup interface {
-	SetupVcpkgEnv() error
-	GetVcpkgPath() (string, error)
+	SetupEnv() error
+	GetPath() (string, error)
 }
 
 // LintCode runs clang-tidy static analysis
@@ -24,7 +24,7 @@ func LintCode(fix bool, vcpkg VcpkgSetup) error {
 	fmt.Printf("%s Running static analysis...%s\n", Cyan, Reset)
 
 	// Set up vcpkg environment
-	if err := vcpkg.SetupVcpkgEnv(); err != nil {
+	if err := vcpkg.SetupEnv(); err != nil {
 		return fmt.Errorf("failed to setup vcpkg: %w", err)
 	}
 
@@ -47,7 +47,7 @@ func LintCode(fix bool, vcpkg VcpkgSetup) error {
 
 	if needsRegenerate {
 		// Get vcpkg root for toolchain file
-		vcpkgPath, err := vcpkg.GetVcpkgPath()
+		vcpkgPath, err := vcpkg.GetPath()
 		if err != nil {
 			return fmt.Errorf("vcpkg not configured: %w", err)
 		}

@@ -5,12 +5,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 )
 
 // RunBenchmarks builds and runs the project benchmarks
-func RunBenchmarks(verbose bool, setupVcpkgEnv func() error) error {
+func RunBenchmarks(verbose bool, vcpkgClient *vcpkg.Client) error {
 	// Set VCPKG_ROOT from cpx config if not already set
-	if err := setupVcpkgEnv(); err != nil {
+	if err := vcpkgClient.SetupEnv(); err != nil {
 		return err
 	}
 

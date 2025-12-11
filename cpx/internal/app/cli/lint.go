@@ -2,36 +2,19 @@ package cli
 
 import (
 	"github.com/ozacod/cpx/internal/pkg/quality"
+	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 	"github.com/spf13/cobra"
 )
 
-// vcpkgAdapter implements quality.VcpkgSetup interface
-type vcpkgAdapter struct {
-	setupEnv func() error
-	getPath  func() (string, error)
-}
-
-func (v *vcpkgAdapter) SetupVcpkgEnv() error {
-	return v.setupEnv()
-}
-
-func (v *vcpkgAdapter) GetVcpkgPath() (string, error) {
-	return v.getPath()
-}
-
-var lintSetupVcpkgEnvFunc func() error
-var lintGetVcpkgPathFunc func() (string, error)
-
 // LintCmd creates the lint command
-func LintCmd(setupVcpkgEnv func() error, getVcpkgPath func() (string, error)) *cobra.Command {
-	lintSetupVcpkgEnvFunc = setupVcpkgEnv
-	lintGetVcpkgPathFunc = getVcpkgPath
-
+func LintCmd(client *vcpkg.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "lint",
 		Short: "Run clang-tidy static analysis",
 		Long:  "Run clang-tidy static analysis. Use --fix to automatically fix issues.",
-		RunE:  runLint,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runLint(cmd, args, client)
+		},
 	}
 
 	cmd.Flags().Bool("fix", false, "Automatically fix issues")
@@ -39,12 +22,7 @@ func LintCmd(setupVcpkgEnv func() error, getVcpkgPath func() (string, error)) *c
 	return cmd
 }
 
-func runLint(cmd *cobra.Command, args []string) error {
+func runLint(cmd *cobra.Command, args []string, client *vcpkg.Client) error {
 	fix, _ := cmd.Flags().GetBool("fix")
-
-	vcpkg := &vcpkgAdapter{
-		setupEnv: lintSetupVcpkgEnvFunc,
-		getPath:  lintGetVcpkgPathFunc,
-	}
-	return quality.LintCode(fix, vcpkg)
+	return quality.LintCode(fix, client)
 }

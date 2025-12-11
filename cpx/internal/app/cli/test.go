@@ -5,15 +5,12 @@ import (
 	"os"
 
 	"github.com/ozacod/cpx/internal/pkg/build"
+	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 	"github.com/spf13/cobra"
 )
 
-var testSetupVcpkgEnvFunc func() error
-
 // TestCmd creates the test command
-func TestCmd(setupVcpkgEnv func() error) *cobra.Command {
-	testSetupVcpkgEnvFunc = setupVcpkgEnv
-
+func TestCmd(client *vcpkg.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "test",
 		Short: "Build and run tests",
@@ -21,7 +18,9 @@ func TestCmd(setupVcpkgEnv func() error) *cobra.Command {
 		Example: `  cpx test                 # Build + run all tests
   cpx test --verbose       # Show verbose output
   cpx test --filter MySuite.*`,
-		RunE: runTest,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runTest(cmd, args, client)
+		},
 	}
 
 	cmd.Flags().BoolP("verbose", "v", false, "Show verbose test output")
@@ -30,7 +29,7 @@ func TestCmd(setupVcpkgEnv func() error) *cobra.Command {
 	return cmd
 }
 
-func runTest(cmd *cobra.Command, args []string) error {
+func runTest(cmd *cobra.Command, args []string, client *vcpkg.Client) error {
 	verbose, _ := cmd.Flags().GetBool("verbose")
 	filter, _ := cmd.Flags().GetString("filter")
 
@@ -44,7 +43,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 		return runMesonTest(verbose, filter)
 	default:
 		// CMake/vcpkg
-		return build.RunTests(verbose, filter, testSetupVcpkgEnvFunc)
+		return build.RunTests(verbose, filter, client)
 	}
 }
 

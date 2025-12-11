@@ -7,18 +7,14 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"strings"
 	"time"
+
+	"github.com/ozacod/cpx/internal/pkg/vcpkg"
 )
 
 // GetProjectNameFromCMakeLists extracts project name from CMakeLists.txt in current directory
 func GetProjectNameFromCMakeLists() string {
-	return GetProjectNameFromCMakeListsInDir(".")
-}
-
-// GetProjectNameFromCMakeListsInDir extracts project name from CMakeLists.txt in the given directory
-func GetProjectNameFromCMakeListsInDir(dir string) string {
-	cmakeListsPath := filepath.Join(dir, "CMakeLists.txt")
+	cmakeListsPath := "CMakeLists.txt"
 	data, err := os.ReadFile(cmakeListsPath)
 	if err != nil {
 		return ""
@@ -69,71 +65,10 @@ func DetermineBuildType(release bool, optLevel string) (string, string) {
 	return buildType, cxxFlags
 }
 
-// ConfigureCMake configures CMake for the project
-func ConfigureCMake(buildDir, buildType, cxxFlags string, verbose bool, setupVcpkgEnv func() error) error {
-	// Set VCPKG_ROOT from cpx config if not already set
-	if err := setupVcpkgEnv(); err != nil {
-		return err
-	}
-
-	// Determine absolute path for shared vcpkg_installed directory
-	// Determine absolute path for shared vcpkg_installed directory in .cache
-	cwd, _ := os.Getwd()
-	vcpkgInstalledDir := filepath.Join(cwd, ".cache", "vcpkg_installed")
-	vcpkgInstallArg := "-DVCPKG_INSTALLED_DIR=" + vcpkgInstalledDir
-
-	// Check if CMakePresets.json exists, use preset if available
-	if _, err := os.Stat("CMakePresets.json"); err == nil {
-		// Use "default" preset (VCPKG_ROOT is now set from config)
-		// We explicitly pass -B to override the preset's binaryDir if it differs
-		// We explicitly pass VCPKG_INSTALLED_DIR to share dependencies between build configs
-		cmd := exec.Command("cmake", "--preset=default", "-B", buildDir, vcpkgInstallArg)
-		// Ensure all vcpkg environment variables are in command environment
-		cmd.Env = os.Environ()
-		// Debug: Show environment variables being passed to CMake
-		if os.Getenv("CPX_DEBUG") != "" {
-			fmt.Printf("%s[DEBUG] CMake environment (preset):%s\n", "\033[36m", "\033[0m")
-			for _, env := range cmd.Env {
-				if strings.HasPrefix(env, "VCPKG_") {
-					fmt.Printf("  %s\n", env)
-				}
-			}
-		}
-		if err := runCMakeConfigure(cmd, verbose); err != nil {
-			return fmt.Errorf("cmake configure failed (preset 'default'): %w", err)
-		}
-	} else {
-		// Fallback to traditional cmake configure
-		cmakeArgs := []string{"-B", buildDir, "-DCMAKE_BUILD_TYPE=" + buildType, vcpkgInstallArg}
-
-		if cxxFlags != "" {
-			cmakeArgs = append(cmakeArgs, "-DCMAKE_CXX_FLAGS="+cxxFlags)
-		}
-
-		cmd := exec.Command("cmake", cmakeArgs...)
-		// Ensure all vcpkg environment variables are in command environment
-		cmd.Env = os.Environ()
-		// Debug: Show environment variables being passed to CMake
-		if os.Getenv("CPX_DEBUG") != "" {
-			fmt.Printf("%s[DEBUG] CMake environment (traditional):%s\n", "\033[36m", "\033[0m")
-			for _, env := range cmd.Env {
-				if strings.HasPrefix(env, "VCPKG_") {
-					fmt.Printf("  %s\n", env)
-				}
-			}
-		}
-		if err := runCMakeConfigure(cmd, verbose); err != nil {
-			return fmt.Errorf("cmake configure failed: %w", err)
-		}
-	}
-
-	return nil
-}
-
 // BuildProject builds the project using CMake
-func BuildProject(release bool, jobs int, target string, clean bool, optLevel string, verbose bool, setupVcpkgEnv func() error) error {
+func BuildProject(release bool, jobs int, target string, clean bool, optLevel string, verbose bool, vcpkgClient *vcpkg.Client) error {
 	// Set VCPKG_ROOT from cpx config if not already set
-	if err := setupVcpkgEnv(); err != nil {
+	if err := vcpkgClient.SetupEnv(); err != nil {
 		return err
 	}
 

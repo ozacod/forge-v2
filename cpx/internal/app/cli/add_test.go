@@ -42,7 +42,7 @@ func TestRunVcpkgAdd(t *testing.T) {
 			r, w, _ := os.Pipe()
 			os.Stdout = w
 
-			runErr := runVcpkgAdd(tt.args)
+			runErr := runVcpkgAdd(tt.args, nil)
 
 			// Restore stdout
 			err := w.Close()
