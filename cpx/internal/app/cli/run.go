@@ -32,6 +32,7 @@ Arguments after -- are passed to the binary.`,
 
 	cmd.Flags().Bool("release", false, "Build in release mode (-O2). Default is debug")
 	cmd.Flags().String("target", "", "Executable target to run (useful if multiple)")
+	cmd.Flags().StringP("opt", "O", "", "Override optimization level: 0,1,2,3,s,fast")
 	cmd.Flags().Bool("verbose", false, "Show full build output")
 
 	return cmd
@@ -40,32 +41,48 @@ Arguments after -- are passed to the binary.`,
 func runRun(cmd *cobra.Command, args []string) error {
 	release, _ := cmd.Flags().GetBool("release")
 	target, _ := cmd.Flags().GetString("target")
+	optLevel, _ := cmd.Flags().GetString("opt")
 	verbose, _ := cmd.Flags().GetBool("verbose")
 
 	projectType := DetectProjectType()
 
 	switch projectType {
 	case ProjectTypeBazel:
-		return runBazelRun(release, target, args, verbose)
+		return runBazelRun(release, target, args, verbose, optLevel)
 	case ProjectTypeMeson:
-		return runMesonRun(release, target, args, verbose)
+		return runMesonRun(release, target, args, verbose, optLevel)
 	case ProjectTypeVcpkg:
-		return build.RunProject(release, target, args, verbose, runSetupVcpkgEnvFunc)
+		return build.RunProject(release, target, args, verbose, optLevel, runSetupVcpkgEnvFunc)
 	default:
 		// Fall back to CMake run even without vcpkg.json
-		return build.RunProject(release, target, args, verbose, runSetupVcpkgEnvFunc)
+		return build.RunProject(release, target, args, verbose, optLevel, runSetupVcpkgEnvFunc)
 	}
 }
 
-func runBazelRun(release bool, target string, args []string, verbose bool) error {
+func runBazelRun(release bool, target string, args []string, verbose bool, optLevel string) error {
 	// Build bazel run args
 	bazelArgs := []string{"run"}
 
-	// Add config for release/debug
-	if release {
-		bazelArgs = append(bazelArgs, "--config=release")
-	} else {
-		bazelArgs = append(bazelArgs, "--config=debug")
+	// Handle optimization level
+	switch optLevel {
+	case "0":
+		bazelArgs = append(bazelArgs, "--copt=-O0", "-c", "dbg")
+	case "1":
+		bazelArgs = append(bazelArgs, "--copt=-O1", "-c", "opt")
+	case "2":
+		bazelArgs = append(bazelArgs, "--copt=-O2", "-c", "opt")
+	case "3":
+		bazelArgs = append(bazelArgs, "--copt=-O3", "-c", "opt")
+	case "s":
+		bazelArgs = append(bazelArgs, "--copt=-Os", "-c", "opt")
+	case "fast":
+		bazelArgs = append(bazelArgs, "--copt=-Ofast", "-c", "opt")
+	default:
+		if release {
+			bazelArgs = append(bazelArgs, "--config=release")
+		} else {
+			bazelArgs = append(bazelArgs, "--config=debug")
+		}
 	}
 
 	// Add target or try to find one
@@ -104,9 +121,9 @@ func runBazelRun(release bool, target string, args []string, verbose bool) error
 	return runCmd.Run()
 }
 
-func runMesonRun(release bool, target string, args []string, verbose bool) error {
+func runMesonRun(release bool, target string, args []string, verbose bool, optLevel string) error {
 	// Ensure project is built first
-	if err := runMesonBuild(release, target, false, verbose); err != nil {
+	if err := runMesonBuild(release, target, false, verbose, optLevel); err != nil {
 		return fmt.Errorf("build failed: %w", err)
 	}
 

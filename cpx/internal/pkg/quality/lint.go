@@ -29,7 +29,9 @@ func LintCode(fix bool, vcpkg VcpkgSetup) error {
 	}
 
 	// Check for compile_commands.json and regenerate if needed
-	compileDb := "build/compile_commands.json"
+	// Use .cache/build/debug for consistency with build command
+	buildDir := filepath.Join(".cache", "build", "debug")
+	compileDb := filepath.Join(buildDir, "compile_commands.json")
 	needsRegenerate := false
 
 	if _, err := os.Stat(compileDb); os.IsNotExist(err) {
@@ -37,7 +39,7 @@ func LintCode(fix bool, vcpkg VcpkgSetup) error {
 		fmt.Printf("%s  Generating compile_commands.json...%s\n", Cyan, Reset)
 	} else {
 		// Check if CMakeCache.txt exists - if not, we need to configure
-		if _, err := os.Stat("build/CMakeCache.txt"); os.IsNotExist(err) {
+		if _, err := os.Stat(filepath.Join(buildDir, "CMakeCache.txt")); os.IsNotExist(err) {
 			needsRegenerate = true
 			fmt.Printf("%s  Regenerating compile_commands.json (CMake not configured)...%s\n", Cyan, Reset)
 		}
@@ -58,16 +60,27 @@ func LintCode(fix bool, vcpkg VcpkgSetup) error {
 		}
 
 		// Configure CMake with vcpkg toolchain
+		// Use shared vcpkg_installed directory
+		cwd, _ := os.Getwd()
+		vcpkgInstalledDir := filepath.Join(cwd, ".cache", "vcpkg_installed")
+		vcpkgInstallArg := "-DVCPKG_INSTALLED_DIR=" + vcpkgInstalledDir
+
 		cmakeArgs := []string{
-			"-B", "build",
+			"-B", buildDir,
 			"-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
 			"-DCMAKE_TOOLCHAIN_FILE=" + toolchainFile,
+			vcpkgInstallArg,
 		}
 
 		// Check if CMakePresets.json exists and use it
 		if _, err := os.Stat("CMakePresets.json"); err == nil {
 			// Use preset if available
-			cmakeArgs = []string{"--preset", "default", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"}
+			cmakeArgs = []string{
+				"--preset", "default",
+				"-B", buildDir,
+				"-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+				vcpkgInstallArg,
+			}
 		}
 
 		cmd := exec.Command("cmake", cmakeArgs...)
@@ -76,18 +89,6 @@ func LintCode(fix bool, vcpkg VcpkgSetup) error {
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to generate compile_commands.json: %w\n  Try running 'cpx build' first to configure the project", err)
-		}
-
-		// Move compile_commands.json to build directory if it was created in root
-		if _, err := os.Stat("compile_commands.json"); err == nil {
-			if err := os.Rename("compile_commands.json", compileDb); err != nil {
-				// If move fails, try copying
-				data, err := os.ReadFile("compile_commands.json")
-				if err == nil {
-					os.WriteFile(compileDb, data, 0644)
-					os.Remove("compile_commands.json")
-				}
-			}
 		}
 	}
 
@@ -106,7 +107,7 @@ func LintCode(fix bool, vcpkg VcpkgSetup) error {
 					return nil
 				}
 				// Skip build directories and other common ignored paths
-				if strings.Contains(path, "/build/") || strings.Contains(path, "\\build\\") {
+				if strings.Contains(path, "/build/") || strings.Contains(path, "\\build\\") || strings.Contains(path, "/.cache/") {
 					return nil
 				}
 				ext := filepath.Ext(path)
@@ -124,6 +125,7 @@ func LintCode(fix bool, vcpkg VcpkgSetup) error {
 				strings.HasPrefix(file, "out/") ||
 				strings.HasPrefix(file, "bin/") ||
 				strings.HasPrefix(file, ".vcpkg/") ||
+				strings.HasPrefix(file, ".cache/") ||
 				strings.Contains(file, "/build/") ||
 				strings.Contains(file, "\\build\\") {
 				continue
@@ -137,15 +139,9 @@ func LintCode(fix bool, vcpkg VcpkgSetup) error {
 		return nil
 	}
 
-	// Verify compile_commands.json exists and get absolute path
-	buildDir, err := filepath.Abs("build")
-	if err != nil {
-		return fmt.Errorf("failed to get absolute path to build directory: %w", err)
-	}
-
-	compileDbPath := filepath.Join(buildDir, "compile_commands.json")
-	if _, err := os.Stat(compileDbPath); os.IsNotExist(err) {
-		return fmt.Errorf("compile_commands.json not found at %s\n  Run 'cpx build' first to generate it", compileDbPath)
+	// Verify compile_commands.json exists
+	if _, err := os.Stat(compileDb); os.IsNotExist(err) {
+		return fmt.Errorf("compile_commands.json not found at %s\n  Run 'cpx build' first to generate it", compileDb)
 	}
 
 	// Get system include paths from the compiler to help clang-tidy find standard headers
@@ -153,7 +149,8 @@ func LintCode(fix bool, vcpkg VcpkgSetup) error {
 	systemIncludes := GetSystemIncludePaths()
 
 	// Run clang-tidy with absolute path to build directory
-	tidyArgs := []string{"-p", buildDir}
+	absBuildDir, _ := filepath.Abs(buildDir)
+	tidyArgs := []string{"-p", absBuildDir}
 	if fix {
 		tidyArgs = append(tidyArgs, "-fix")
 	}

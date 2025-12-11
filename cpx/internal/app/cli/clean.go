@@ -127,11 +127,12 @@ func cleanMeson(all bool) error {
 func cleanCMake(all bool) error {
 	fmt.Printf("%sCleaning CMake/vcpkg project...%s\n", Cyan, Reset)
 
-	// Remove build directory
+	// Remove build directory and hidden cache build directory
 	removeDir("build")
+	removeDir(filepath.Join(".cache", "build"))
 
 	if all {
-		dirsToRemove := []string{"out", "cmake-build-debug", "cmake-build-release"}
+		dirsToRemove := []string{"out", "cmake-build-debug", "cmake-build-release", filepath.Join(".cache", "vcpkg_installed")}
 		for _, dir := range dirsToRemove {
 			removeDir(dir)
 		}

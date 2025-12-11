@@ -446,6 +446,9 @@ test_results/
 
 # vcpkg cache (Docker builds)
 .vcpkg_cache/
+
+# Local Cache
+.cache/
 `
 }
 

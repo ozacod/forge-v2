@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/ozacod/cpx/internal/pkg/build"
 	"github.com/spf13/cobra"
@@ -58,13 +59,13 @@ func runBuild(cmd *cobra.Command, args []string) error {
 			fmt.Printf("%sWatch mode not yet supported for Bazel projects%s\n", Yellow, Reset)
 			return nil
 		}
-		return runBazelBuild(release, target, clean, verbose)
+		return runBazelBuild(release, target, clean, verbose, optLevel)
 	case ProjectTypeMeson:
 		if watch {
 			fmt.Printf("%sWatch mode not yet supported for Meson projects%s\n", Yellow, Reset)
 			return nil
 		}
-		return runMesonBuild(release, target, clean, verbose)
+		return runMesonBuild(release, target, clean, verbose, optLevel)
 	case ProjectTypeVcpkg:
 		if watch {
 			return build.WatchAndBuild(release, jobs, target, optLevel, verbose, setupVcpkgEnvFunc)
@@ -79,7 +80,7 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	}
 }
 
-func runBazelBuild(release bool, target string, clean bool, verbose bool) error {
+func runBazelBuild(release bool, target string, clean bool, verbose bool, optLevel string) error {
 	// Clean if requested
 	if clean {
 		fmt.Printf("%sCleaning Bazel build...%s\n", Cyan, Reset)
@@ -96,11 +97,36 @@ func runBazelBuild(release bool, target string, clean bool, verbose bool) error 
 	// Build args
 	bazelArgs := []string{"build"}
 
-	// Add config for release/debug
-	if release {
-		bazelArgs = append(bazelArgs, "--config=release")
-	} else {
-		bazelArgs = append(bazelArgs, "--config=debug")
+	// Handle optimization level - optLevel takes precedence over release flag
+	optLabel := "debug"
+	switch optLevel {
+	case "0":
+		bazelArgs = append(bazelArgs, "--copt=-O0", "-c", "dbg")
+		optLabel = "-O0 (debug)"
+	case "1":
+		bazelArgs = append(bazelArgs, "--copt=-O1", "-c", "opt")
+		optLabel = "-O1"
+	case "2":
+		bazelArgs = append(bazelArgs, "--copt=-O2", "-c", "opt")
+		optLabel = "-O2"
+	case "3":
+		bazelArgs = append(bazelArgs, "--copt=-O3", "-c", "opt")
+		optLabel = "-O3"
+	case "s":
+		bazelArgs = append(bazelArgs, "--copt=-Os", "-c", "opt")
+		optLabel = "-Os (size)"
+	case "fast":
+		bazelArgs = append(bazelArgs, "--copt=-Ofast", "-c", "opt")
+		optLabel = "-Ofast"
+	default:
+		// No explicit opt level, use release/debug config
+		if release {
+			bazelArgs = append(bazelArgs, "--config=release")
+			optLabel = "release"
+		} else {
+			bazelArgs = append(bazelArgs, "--config=debug")
+			optLabel = "debug"
+		}
 	}
 
 	// Add target or default to //...
@@ -110,7 +136,7 @@ func runBazelBuild(release bool, target string, clean bool, verbose bool) error 
 		bazelArgs = append(bazelArgs, "//...")
 	}
 
-	fmt.Printf("%sBuilding with Bazel...%s\n", Cyan, Reset)
+	fmt.Printf("%sBuilding with Bazel [%s]...%s\n", Cyan, optLabel, Reset)
 	if verbose {
 		fmt.Printf("  Running: bazel %v\n", bazelArgs)
 	} else {
@@ -126,18 +152,27 @@ func runBazelBuild(release bool, target string, clean bool, verbose bool) error 
 		return fmt.Errorf("bazel build failed: %w", err)
 	}
 
-	// Copy artifacts to build/ directory for consistency with CMake projects
-	if err := os.MkdirAll("build", 0755); err != nil {
+	// Determine output directory based on config
+	outDirName := "debug"
+	if optLevel != "" {
+		outDirName = "O" + optLevel
+	} else if release {
+		outDirName = "release"
+	}
+	outputDir := filepath.Join("build", outDirName)
+
+	// Copy artifacts to build/<config>/ directory
+	// Remove existing build artifacts for this config first
+	os.RemoveAll(outputDir)
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return fmt.Errorf("failed to create build directory: %w", err)
 	}
 
-	// Copy executables and libraries from .bin to build/
-	// (symlink created by --symlink_prefix=. in .bazelrc creates .bin, .out, etc.)
-	fmt.Printf("%sCopying artifacts to build/...%s\n", Cyan, Reset)
-	// Use -L to follow symlinks (.bin is a symlink)
-	// Search in src/ subdirectory where targets typically are
-	// Filter out Bazel metadata files (.cppmap, .repo_mapping, etc.)
-	copyCmd := execCommand("bash", "-c", `
+	// Copy executables and libraries from bazel-bin to build/<config>/
+	fmt.Printf("%sCopying artifacts to %s/...%s\n", Cyan, outputDir, Reset)
+
+	// Create a script to copy with the correct output directory variable
+	script := fmt.Sprintf(`
 		# Find the bazel-bin symlink (could be .bin or bazel-bin)
 		BAZEL_BIN=""
 		if [ -L ".bin" ] || [ -d ".bin" ]; then
@@ -154,30 +189,79 @@ func runBazelBuild(release bool, target string, clean bool, verbose bool) error 
 		fi
 
 		# Copy executables from src/ directory (where cc_binary targets are placed)
-		find -L "$BAZEL_BIN/src" -maxdepth 1 -type f -perm +111 ! -name "*.params" ! -name "*.sh" ! -name "*.cppmap" ! -name "*.repo_mapping" ! -name "*runfiles*" ! -name "*.d" -exec cp {} build/ \; 2>/dev/null || true
+		find -L "$BAZEL_BIN/src" -maxdepth 1 -type f -perm +111 ! -name "*.params" ! -name "*.sh" ! -name "*.cppmap" ! -name "*.repo_mapping" ! -name "*runfiles*" ! -name "*.d" -exec cp -f {} %[1]s/ \; 2>/dev/null || true
 
 		# Also copy from root of bazel-bin (for root aliases)
-		find -L "$BAZEL_BIN" -maxdepth 1 -type f -perm +111 ! -name "*.params" ! -name "*.sh" ! -name "*.cppmap" ! -name "*.repo_mapping" ! -name "*runfiles*" ! -name "*.d" -exec cp {} build/ \; 2>/dev/null || true
+		find -L "$BAZEL_BIN" -maxdepth 1 -type f -perm +111 ! -name "*.params" ! -name "*.sh" ! -name "*.cppmap" ! -name "*.repo_mapping" ! -name "*runfiles*" ! -name "*.d" -exec cp -f {} %[1]s/ \; 2>/dev/null || true
 
 		# Copy libraries from src/
-		find -L "$BAZEL_BIN/src" -maxdepth 1 -type f \( -name "*.a" -o -name "*.so" -o -name "*.dylib" \) -exec cp {} build/ \; 2>/dev/null || true
+		find -L "$BAZEL_BIN/src" -maxdepth 1 -type f \( -name "*.a" -o -name "*.so" -o -name "*.dylib" \) -exec cp -f {} %[1]s/ \; 2>/dev/null || true
+
+		# Make copied files writable (Bazel creates read-only files)
+		chmod -R u+w %[1]s/ 2>/dev/null || true
 
 		# List what was copied
-		ls build/ 2>/dev/null || true
-	`)
+		ls %[1]s/ 2>/dev/null || true
+	`, outputDir)
+
+	copyCmd := execCommand("bash", "-c", script)
 	copyCmd.Stdout = os.Stdout
 	copyCmd.Stderr = os.Stderr
 	copyCmd.Run() // Ignore errors - may have no artifacts
 
 	fmt.Printf("%s✓ Build successful%s\n", Green, Reset)
-	fmt.Printf("  Artifacts in: build/\n")
+	fmt.Printf("  Artifacts in: %s/\n", outputDir)
 	return nil
 }
 
-func runMesonBuild(release bool, target string, clean bool, verbose bool) error {
+func runMesonBuild(release bool, target string, clean bool, verbose bool, optLevel string) error {
 	buildDir := "builddir"
 
-	// Clean if requested
+	// Determine build type and optimization from flags
+	buildType := "debug"
+	optimization := "0" // Meson optimization: 0, 1, 2, 3, s
+	optLabel := "debug"
+
+	switch optLevel {
+	case "0":
+		buildType = "debug"
+		optimization = "0"
+		optLabel = "-O0 (debug)"
+	case "1":
+		buildType = "debugoptimized"
+		optimization = "1"
+		optLabel = "-O1"
+	case "2":
+		buildType = "release"
+		optimization = "2"
+		optLabel = "-O2"
+	case "3":
+		buildType = "release"
+		optimization = "3"
+		optLabel = "-O3"
+	case "s":
+		buildType = "minsize"
+		optimization = "s"
+		optLabel = "-Os (size)"
+	case "fast":
+		// Meson doesn't have -Ofast directly, use -O3 with custom flags
+		buildType = "release"
+		optimization = "3"
+		optLabel = "-Ofast"
+	default:
+		// No explicit opt level, use release/debug
+		if release {
+			buildType = "release"
+			optimization = "2"
+			optLabel = "release"
+		} else {
+			buildType = "debug"
+			optimization = "0"
+			optLabel = "debug"
+		}
+	}
+
+	// Clean if requested or if optimization changed
 	if clean {
 		fmt.Printf("%sCleaning Meson build...%s\n", Cyan, Reset)
 		os.RemoveAll(buildDir)
@@ -185,12 +269,13 @@ func runMesonBuild(release bool, target string, clean bool, verbose bool) error 
 
 	// Check if build directory exists (needs setup)
 	if _, err := os.Stat(buildDir); os.IsNotExist(err) {
-		fmt.Printf("%sSetting up Meson build directory...%s\n", Cyan, Reset)
+		fmt.Printf("%sSetting up Meson build directory [%s]...%s\n", Cyan, optLabel, Reset)
 		setupArgs := []string{"setup", buildDir}
-		if release {
-			setupArgs = append(setupArgs, "--buildtype=release")
-		} else {
-			setupArgs = append(setupArgs, "--buildtype=debug")
+		setupArgs = append(setupArgs, "--buildtype="+buildType)
+		setupArgs = append(setupArgs, "--optimization="+optimization)
+		if optLevel == "fast" {
+			// Add -ffast-math for -Ofast equivalent
+			setupArgs = append(setupArgs, "-Dc_args=-ffast-math", "-Dcpp_args=-ffast-math")
 		}
 		setupCmd := execCommand("meson", setupArgs...)
 		setupCmd.Stdout = os.Stdout
@@ -198,6 +283,20 @@ func runMesonBuild(release bool, target string, clean bool, verbose bool) error 
 		if err := setupCmd.Run(); err != nil {
 			return fmt.Errorf("meson setup failed: %w", err)
 		}
+	} else {
+		// Build directory exists, reconfigure if optimization changed
+		fmt.Printf("%sReconfiguring Meson [%s]...%s\n", Cyan, optLabel, Reset)
+		reconfigArgs := []string{"configure", buildDir}
+		reconfigArgs = append(reconfigArgs, "--buildtype="+buildType)
+		reconfigArgs = append(reconfigArgs, "--optimization="+optimization)
+		if optLevel == "fast" {
+			reconfigArgs = append(reconfigArgs, "-Dc_args=-ffast-math", "-Dcpp_args=-ffast-math")
+		}
+		reconfigCmd := execCommand("meson", reconfigArgs...)
+		reconfigCmd.Stdout = os.Stdout
+		reconfigCmd.Stderr = os.Stderr
+		// Ignore reconfigure errors - may fail if no changes needed
+		reconfigCmd.Run()
 	}
 
 	// Build

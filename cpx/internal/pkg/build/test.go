@@ -20,7 +20,9 @@ func RunTests(verbose bool, filter string, setupVcpkgEnv func() error) error {
 	}
 	fmt.Printf("%s Running tests for '%s'...%s\n", "\033[36m", projectName, "\033[0m")
 
-	buildDir := "build"
+	// Default to debug for tests if no config specified
+	// Use .cache/build/debug for building tests
+	buildDir := filepath.Join(".cache", "build", "debug")
 
 	// Check if configure is needed
 	needsConfigure := false
@@ -44,10 +46,15 @@ func RunTests(verbose bool, filter string, setupVcpkgEnv func() error) error {
 			fmt.Printf("\r\033[2K%s[%d/%d]%s Configuring...", colorCyan, currentStep, totalSteps, colorReset)
 		}
 
+		// Determine absolute path for shared vcpkg_installed directory
+		cwd, _ := os.Getwd()
+		vcpkgInstalledDir := filepath.Join(cwd, ".cache", "vcpkg_installed")
+		vcpkgInstallArg := "-DVCPKG_INSTALLED_DIR=" + vcpkgInstalledDir
+
 		// Check if CMakePresets.json exists, use preset if available
 		if _, err := os.Stat("CMakePresets.json"); err == nil {
 			// Use "default" preset (VCPKG_ROOT is now set from config)
-			cmd := exec.Command("cmake", "--preset=default")
+			cmd := exec.Command("cmake", "--preset=default", "-B", buildDir, vcpkgInstallArg)
 			cmd.Env = os.Environ()
 			if err := runCMakeConfigure(cmd, verbose); err != nil {
 				fmt.Println()
@@ -55,7 +62,7 @@ func RunTests(verbose bool, filter string, setupVcpkgEnv func() error) error {
 			}
 		} else {
 			// Fallback to traditional cmake configure
-			cmd := exec.Command("cmake", "-B", buildDir)
+			cmd := exec.Command("cmake", "-B", buildDir, vcpkgInstallArg)
 			if err := runCMakeConfigure(cmd, verbose); err != nil {
 				fmt.Println()
 				return fmt.Errorf("cmake configure failed: %w", err)

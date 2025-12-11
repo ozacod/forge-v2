@@ -76,10 +76,18 @@ func ConfigureCMake(buildDir, buildType, cxxFlags string, verbose bool, setupVcp
 		return err
 	}
 
+	// Determine absolute path for shared vcpkg_installed directory
+	// Determine absolute path for shared vcpkg_installed directory in .cache
+	cwd, _ := os.Getwd()
+	vcpkgInstalledDir := filepath.Join(cwd, ".cache", "vcpkg_installed")
+	vcpkgInstallArg := "-DVCPKG_INSTALLED_DIR=" + vcpkgInstalledDir
+
 	// Check if CMakePresets.json exists, use preset if available
 	if _, err := os.Stat("CMakePresets.json"); err == nil {
 		// Use "default" preset (VCPKG_ROOT is now set from config)
-		cmd := exec.Command("cmake", "--preset=default")
+		// We explicitly pass -B to override the preset's binaryDir if it differs
+		// We explicitly pass VCPKG_INSTALLED_DIR to share dependencies between build configs
+		cmd := exec.Command("cmake", "--preset=default", "-B", buildDir, vcpkgInstallArg)
 		// Ensure all vcpkg environment variables are in command environment
 		cmd.Env = os.Environ()
 		// Debug: Show environment variables being passed to CMake
@@ -96,7 +104,7 @@ func ConfigureCMake(buildDir, buildType, cxxFlags string, verbose bool, setupVcp
 		}
 	} else {
 		// Fallback to traditional cmake configure
-		cmakeArgs := []string{"-B", buildDir, "-DCMAKE_BUILD_TYPE=" + buildType}
+		cmakeArgs := []string{"-B", buildDir, "-DCMAKE_BUILD_TYPE=" + buildType, vcpkgInstallArg}
 
 		if cxxFlags != "" {
 			cmakeArgs = append(cmakeArgs, "-DCMAKE_CXX_FLAGS="+cxxFlags)
@@ -135,12 +143,25 @@ func BuildProject(release bool, jobs int, target string, clean bool, optLevel st
 		projectName = "project"
 	}
 
-	buildDir := "build"
+	// Determine build directory based on config
+	// Determine build directory based on config
+	outDirName := "debug"
+	if optLevel != "" {
+		outDirName = "O" + optLevel
+	} else if release {
+		outDirName = "release"
+	}
+	// Use .cache/build/<config> for intermediate build files
+	cacheBuildDir := filepath.Join(".cache", "build", outDirName)
+	// Use build/<config> for final artifacts
+	finalBuildDir := filepath.Join("build", outDirName)
 
+	// Clean if requested
 	// Clean if requested
 	if clean {
 		fmt.Printf("%s Cleaning build directory...%s\n", "\033[36m", "\033[0m")
-		os.RemoveAll(buildDir)
+		os.RemoveAll(cacheBuildDir)
+		os.RemoveAll(finalBuildDir)
 	}
 
 	// Determine build type and optimization
@@ -156,7 +177,7 @@ func BuildProject(release bool, jobs int, target string, clean bool, optLevel st
 
 	// Configure CMake if needed or if clean was done
 	needsConfigure := clean
-	if _, err := os.Stat(filepath.Join(buildDir, "CMakeCache.txt")); os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(cacheBuildDir, "CMakeCache.txt")); os.IsNotExist(err) {
 		needsConfigure = true
 	}
 
@@ -175,7 +196,7 @@ func BuildProject(release bool, jobs int, target string, clean bool, optLevel st
 		} else {
 			fmt.Printf("\r\033[2K%s[%d/%d]%s Configuring...", colorCyan, currentStep, totalSteps, colorReset)
 		}
-		if err := ConfigureCMake(buildDir, buildType, cxxFlags, verbose, setupVcpkgEnv); err != nil {
+		if err := ConfigureCMake(cacheBuildDir, buildType, cxxFlags, verbose, setupVcpkgEnv); err != nil {
 			fmt.Println() // Move to next line on error
 			return err
 		}
@@ -186,7 +207,7 @@ func BuildProject(release bool, jobs int, target string, clean bool, optLevel st
 
 	// Build
 	buildStart := time.Now()
-	buildArgs := []string{"--build", buildDir, "--config", buildType}
+	buildArgs := []string{"--build", cacheBuildDir, "--config", buildType}
 
 	if jobs > 0 {
 		buildArgs = append(buildArgs, "--parallel", fmt.Sprintf("%d", jobs))
@@ -203,6 +224,25 @@ func BuildProject(release bool, jobs int, target string, clean bool, optLevel st
 		return fmt.Errorf("build failed: %w", err)
 	}
 
-	fmt.Printf("%s  ✔ Build complete%s %s[%s]%s\n\n", colorGreen, colorReset, colorGray, time.Since(buildStart).Round(10*time.Millisecond), colorReset)
+	// Copy artifacts to final build directory
+	if err := os.MkdirAll(finalBuildDir, 0755); err != nil {
+		return fmt.Errorf("failed to create final build dir: %w", err)
+	}
+
+	executables, err := FindExecutables(cacheBuildDir)
+	if err == nil {
+		for _, exe := range executables {
+			dest := filepath.Join(finalBuildDir, filepath.Base(exe))
+			// Copy file
+			input, err := os.ReadFile(exe)
+			if err != nil {
+				continue
+			}
+			os.WriteFile(dest, input, 0755)
+		}
+	}
+
+	fmt.Printf("%s  ✔ Build complete%s %s[%s]%s\n", colorGreen, colorReset, colorGray, time.Since(buildStart).Round(10*time.Millisecond), colorReset)
+	fmt.Printf("  Artifacts in: %s/\n\n", finalBuildDir)
 	return nil
 }

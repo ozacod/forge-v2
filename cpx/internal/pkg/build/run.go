@@ -61,7 +61,7 @@ func FindExecutables(buildDir string) ([]string, error) {
 }
 
 // RunProject builds and runs the project
-func RunProject(release bool, target string, execArgs []string, verbose bool, setupVcpkgEnv func() error) error {
+func RunProject(release bool, target string, execArgs []string, verbose bool, optLevel string, setupVcpkgEnv func() error) error {
 	// Set VCPKG_ROOT from cpx config if not already set
 	if err := setupVcpkgEnv(); err != nil {
 		return err
@@ -73,18 +73,31 @@ func RunProject(release bool, target string, execArgs []string, verbose bool, se
 		projectName = "project"
 	}
 
-	buildType, _ := DetermineBuildType(release, "")
+	buildType, _ := DetermineBuildType(release, optLevel)
 
-	optLabel := "default (CMake)"
+	optLabel := "default (-O0)"
+	if release {
+		optLabel = "-O2 (Release)"
+	}
+	if optLevel != "" {
+		optLabel = "-O" + optLevel
+	}
 
 	fmt.Printf("\n%s▸ Build%s %s %s(%s)%s %s[opt: %s]%s\n",
 		colorCyan, colorReset, projectName, colorGray, buildType, colorReset,
 		colorGray, optLabel, colorReset)
 
 	// Configure CMake if needed
-	buildDir := "build"
+	outDirName := "debug"
+	if optLevel != "" {
+		outDirName = "O" + optLevel
+	} else if release {
+		outDirName = "release"
+	}
+	cacheBuildDir := filepath.Join(".cache", "build", outDirName)
+	finalBuildDir := filepath.Join("build", outDirName)
 	needsConfigure := false
-	if _, err := os.Stat(filepath.Join(buildDir, "CMakeCache.txt")); os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(cacheBuildDir, "CMakeCache.txt")); os.IsNotExist(err) {
 		needsConfigure = true
 	}
 
@@ -103,10 +116,15 @@ func RunProject(release bool, target string, execArgs []string, verbose bool, se
 			fmt.Printf("\r\033[2K%s[%d/%d]%s Configuring...", colorCyan, currentStep, totalSteps, colorReset)
 		}
 
+		// Determine absolute path for shared vcpkg_installed directory
+		cwd, _ := os.Getwd()
+		vcpkgInstalledDir := filepath.Join(cwd, ".cache", "vcpkg_installed")
+		vcpkgInstallArg := "-DVCPKG_INSTALLED_DIR=" + vcpkgInstalledDir
+
 		// Check if CMakePresets.json exists, use preset if available
 		if _, err := os.Stat("CMakePresets.json"); err == nil {
 			// Use "default" preset (VCPKG_ROOT is now set from config)
-			cmd := exec.Command("cmake", "--preset=default")
+			cmd := exec.Command("cmake", "--preset=default", "-B", cacheBuildDir, vcpkgInstallArg)
 			cmd.Env = os.Environ()
 			if err := runCMakeConfigure(cmd, verbose); err != nil {
 				fmt.Println()
@@ -114,7 +132,7 @@ func RunProject(release bool, target string, execArgs []string, verbose bool, se
 			}
 		} else {
 			// Fallback to traditional cmake configure
-			cmd := exec.Command("cmake", "-B", buildDir, "-DCMAKE_BUILD_TYPE="+buildType)
+			cmd := exec.Command("cmake", "-B", cacheBuildDir, "-DCMAKE_BUILD_TYPE="+buildType, vcpkgInstallArg)
 			if err := runCMakeConfigure(cmd, verbose); err != nil {
 				fmt.Println()
 				return fmt.Errorf("cmake configure failed: %w", err)
@@ -128,7 +146,8 @@ func RunProject(release bool, target string, execArgs []string, verbose bool, se
 
 	// Build specific target if provided
 	buildStart := time.Now()
-	buildArgs := []string{"--build", buildDir, "--config", buildType}
+	// Build in .cache directory
+	buildArgs := []string{"--build", cacheBuildDir, "--config", buildType}
 	if target != "" {
 		buildArgs = append(buildArgs, "--target", target)
 	}
@@ -138,7 +157,25 @@ func RunProject(release bool, target string, execArgs []string, verbose bool, se
 		return fmt.Errorf("build failed: %w", err)
 	}
 
-	// Find executable to run
+	// Copy artifacts to final build directory
+	if err := os.MkdirAll(finalBuildDir, 0755); err != nil {
+		return fmt.Errorf("failed to create final build dir: %w", err)
+	}
+
+	executables, err := FindExecutables(cacheBuildDir)
+	if err == nil {
+		for _, exe := range executables {
+			dest := filepath.Join(finalBuildDir, filepath.Base(exe))
+			// Copy file
+			input, err := os.ReadFile(exe)
+			if err != nil {
+				continue
+			}
+			os.WriteFile(dest, input, 0755)
+		}
+	}
+
+	// Find executable to run (in finalBuildDir)
 	var execPath string
 
 	// If target specified, look for that specific executable
@@ -147,9 +184,9 @@ func RunProject(release bool, target string, execArgs []string, verbose bool, se
 		if runtime.GOOS == "windows" && !strings.HasSuffix(targetName, ".exe") {
 			targetName += ".exe"
 		}
-		execPath = filepath.Join(buildDir, targetName)
+		execPath = filepath.Join(finalBuildDir, targetName)
 		if _, err := os.Stat(execPath); os.IsNotExist(err) {
-			return fmt.Errorf("target executable '%s' not found in %s", target, buildDir)
+			return fmt.Errorf("target executable '%s' not found in %s", target, finalBuildDir)
 		}
 	} else {
 		// Look for project name executable first
@@ -158,16 +195,16 @@ func RunProject(release bool, target string, execArgs []string, verbose bool, se
 			execName += ".exe"
 		}
 
-		execPath = filepath.Join(buildDir, execName)
+		execPath = filepath.Join(finalBuildDir, execName)
 		if _, err := os.Stat(execPath); os.IsNotExist(err) {
 			// Find all executables
-			executables, err := FindExecutables(buildDir)
+			executables, err := FindExecutables(finalBuildDir)
 			if err != nil {
 				return err
 			}
 
 			if len(executables) == 0 {
-				return fmt.Errorf("no executable found in %s. Make sure the project builds an executable", buildDir)
+				return fmt.Errorf("no executable found in %s. Make sure the project builds an executable", finalBuildDir)
 			}
 
 			if len(executables) == 1 {
