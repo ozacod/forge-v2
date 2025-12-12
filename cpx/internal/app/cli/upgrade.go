@@ -6,10 +6,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 
+	"github.com/ozacod/cpx/pkg/config"
 	"github.com/spf13/cobra"
 )
 
@@ -21,6 +23,15 @@ func UpgradeCmd() *cobra.Command {
 		Long:  "Upgrade cpx to the latest version from GitHub releases.",
 		RunE:  runUpgrade,
 	}
+
+	// Add vcpkg subcommand
+	vcpkgCmd := &cobra.Command{
+		Use:   "vcpkg",
+		Short: "Update vcpkg to the latest version",
+		Long:  "Run git pull in the vcpkg directory to update it to the latest version.",
+		RunE:  runUpgradeVcpkg,
+	}
+	cmd.AddCommand(vcpkgCmd)
 
 	return cmd
 }
@@ -146,4 +157,66 @@ func Upgrade(_ []string) {
 
 	fmt.Printf("%s Successfully upgraded to %s!%s\n", Green, latestVersion, Reset)
 	fmt.Printf("  Run %scpx version%s to verify.\n", Cyan, Reset)
+}
+
+// runUpgradeVcpkg updates vcpkg by running git pull in its directory
+func runUpgradeVcpkg(_ *cobra.Command, _ []string) error {
+	// Load global config to get vcpkg root
+	cfg, err := config.LoadGlobal()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	vcpkgRoot := cfg.VcpkgRoot
+	if vcpkgRoot == "" {
+		// Try VCPKG_ROOT environment variable
+		vcpkgRoot = os.Getenv("VCPKG_ROOT")
+	}
+
+	if vcpkgRoot == "" {
+		return fmt.Errorf("vcpkg root not configured. Run 'cpx config set-vcpkg-root <path>' or set VCPKG_ROOT environment variable")
+	}
+
+	// Check if directory exists
+	if _, err := os.Stat(vcpkgRoot); os.IsNotExist(err) {
+		return fmt.Errorf("vcpkg directory not found: %s", vcpkgRoot)
+	}
+
+	// Check if it's a git repository
+	gitDir := filepath.Join(vcpkgRoot, ".git")
+	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
+		return fmt.Errorf("vcpkg directory is not a git repository: %s", vcpkgRoot)
+	}
+
+	fmt.Printf("%s Updating vcpkg in %s...%s\n", Cyan, vcpkgRoot, Reset)
+
+	// Run git pull
+	cmd := exec.Command("git", "pull")
+	cmd.Dir = vcpkgRoot
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("git pull failed: %w", err)
+	}
+
+	// Run bootstrap to ensure vcpkg binary is up to date
+	fmt.Printf("%s Running bootstrap...%s\n", Cyan, Reset)
+
+	var bootstrapCmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		bootstrapCmd = exec.Command("cmd", "/c", "bootstrap-vcpkg.bat")
+	} else {
+		bootstrapCmd = exec.Command("./bootstrap-vcpkg.sh")
+	}
+	bootstrapCmd.Dir = vcpkgRoot
+	bootstrapCmd.Stdout = os.Stdout
+	bootstrapCmd.Stderr = os.Stderr
+
+	if err := bootstrapCmd.Run(); err != nil {
+		fmt.Printf("%s Bootstrap failed (vcpkg may still work): %v%s\n", Yellow, err, Reset)
+	}
+
+	fmt.Printf("%s vcpkg updated successfully!%s\n", Green, Reset)
+	return nil
 }

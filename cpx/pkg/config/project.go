@@ -20,7 +20,7 @@ type CITarget struct {
 	Name       string `yaml:"name"`
 	Dockerfile string `yaml:"dockerfile"`
 	Image      string `yaml:"image"`
-	Triplet    string `yaml:"triplet"`
+	Triplet    string `yaml:"triplet,omitempty"`
 	Platform   string `yaml:"platform"`
 }
 

@@ -477,9 +477,6 @@ install_dockerfiles() {
         "Dockerfile.linux-amd64-musl"
         "Dockerfile.linux-arm64"
         "Dockerfile.linux-arm64-musl"
-        "Dockerfile.windows-amd64"
-        "Dockerfile.macos-amd64"
-        "Dockerfile.macos-arm64"
         "cpx.ci.example"
         "README.md"
     )

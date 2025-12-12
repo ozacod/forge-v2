@@ -121,8 +121,40 @@ Google's multi-language build system. `cpx` manages `MODULE.bazel` (Bzlmod).
 | `fmt` | Format code using `clang-format` |
 | `lint` | Lint code using `clang-tidy` |
 | `analyze` | Run static analysis (cppcheck, flawfinder) & report |
-| `ci` | Generate Docker CI environments |
+| `check` | Check code compiles with sanitizers |
+| `clean` | Remove build artifacts |
+| `search` | Search for libraries interactively |
+| `info <pkg>` | Show detailed library information |
+| `list` | List available libraries |
+| `update` | Update dependencies to latest versions |
+| `doc` | Generate documentation |
+| `release` | Bump version number |
+| `hooks` | Install git hooks |
+| `workflow` | Generate CI/CD workflow files |
 | `upgrade` | Self-update to the latest version |
+
+### CI Commands (`cpx ci`)
+Cross-compile for multiple targets using Docker. Requires `cpx.ci` configuration file.
+
+| Command | Description |
+|---------|-------------|
+| `ci build` | Build for all targets using Docker |
+| `ci run` | Build and run a specific target (`--target`) |
+| `ci add-target` | Add a build target to cpx.ci |
+| `ci add-target list` | List all available targets interactively |
+
+### Config Commands (`cpx config`)
+
+| Command | Description |
+|---------|-------------|
+| `config set-vcpkg-root` | Set vcpkg root directory |
+
+### Upgrade Commands (`cpx upgrade`)
+
+| Command | Description |
+|---------|-------------|
+| `upgrade` | Self-update cpx to the latest version |
+| `upgrade vcpkg` | Update vcpkg via git pull + bootstrap |
 
 ## Contributing
 Issues and PRs are welcome!

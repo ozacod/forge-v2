@@ -23,7 +23,6 @@ func TestDeriveTargetConfig(t *testing.T) {
 				Name:       "linux-amd64",
 				Dockerfile: "Dockerfile.linux-amd64",
 				Image:      "cpx-linux-amd64",
-				Triplet:    "x64-linux",
 				Platform:   "linux/amd64",
 			},
 		},
@@ -34,7 +33,6 @@ func TestDeriveTargetConfig(t *testing.T) {
 				Name:       "linux-arm64",
 				Dockerfile: "Dockerfile.linux-arm64",
 				Image:      "cpx-linux-arm64",
-				Triplet:    "arm64-linux",
 				Platform:   "linux/arm64",
 			},
 		},
@@ -45,40 +43,6 @@ func TestDeriveTargetConfig(t *testing.T) {
 				Name:       "linux-amd64-musl",
 				Dockerfile: "Dockerfile.linux-amd64-musl",
 				Image:      "cpx-linux-amd64-musl",
-				Triplet:    "x64-linux",
-				Platform:   "linux/amd64",
-			},
-		},
-		{
-			name:       "Windows AMD64",
-			targetName: "windows-amd64",
-			expectedTarget: config.CITarget{
-				Name:       "windows-amd64",
-				Dockerfile: "Dockerfile.windows-amd64",
-				Image:      "cpx-windows-amd64",
-				Triplet:    "x64-mingw-static",
-				Platform:   "linux/amd64",
-			},
-		},
-		{
-			name:       "macOS ARM64",
-			targetName: "macos-arm64",
-			expectedTarget: config.CITarget{
-				Name:       "macos-arm64",
-				Dockerfile: "Dockerfile.macos-arm64",
-				Image:      "cpx-macos-arm64",
-				Triplet:    "arm64-osx",
-				Platform:   "linux/arm64",
-			},
-		},
-		{
-			name:       "macOS AMD64",
-			targetName: "macos-amd64",
-			expectedTarget: config.CITarget{
-				Name:       "macos-amd64",
-				Dockerfile: "Dockerfile.macos-amd64",
-				Image:      "cpx-macos-amd64",
-				Triplet:    "x64-osx",
 				Platform:   "linux/amd64",
 			},
 		},
@@ -90,7 +54,6 @@ func TestDeriveTargetConfig(t *testing.T) {
 			assert.Equal(t, tt.expectedTarget.Name, result.Name)
 			assert.Equal(t, tt.expectedTarget.Dockerfile, result.Dockerfile)
 			assert.Equal(t, tt.expectedTarget.Image, result.Image)
-			assert.Equal(t, tt.expectedTarget.Triplet, result.Triplet)
 			assert.Equal(t, tt.expectedTarget.Platform, result.Platform)
 		})
 	}
@@ -169,7 +132,6 @@ func TestRunAddTargetWithArgs(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, ciConfig.Targets, 1)
 	assert.Equal(t, "linux-arm64", ciConfig.Targets[0].Name)
-	assert.Equal(t, "arm64-linux", ciConfig.Targets[0].Triplet)
 	assert.Equal(t, "linux/arm64", ciConfig.Targets[0].Platform)
 
 	// Test: add another target

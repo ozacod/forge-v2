@@ -16,22 +16,29 @@ import (
 func CICmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ci",
-		Short: "Build for multiple targets using Docker (cross-compilation)",
-		Long:  "Build for multiple targets using Docker (cross-compilation). Requires cpx.ci configuration file.",
-		RunE:  runCI,
+		Short: "Cross-compile for multiple targets using Docker",
+		Long:  "Cross-compile for multiple targets using Docker. Requires cpx.ci configuration file.",
 	}
 
-	cmd.Flags().String("target", "", "Build only specific target (default: all)")
-	cmd.Flags().Bool("rebuild", false, "Rebuild Docker images even if they exist")
+	// Add build subcommand - builds all or specific target
+	buildCmd := &cobra.Command{
+		Use:   "build",
+		Short: "Build for all targets using Docker",
+		Long:  "Build for all targets defined in cpx.ci using Docker containers.",
+		RunE:  runCIBuildCmd,
+	}
+	buildCmd.Flags().String("target", "", "Build only specific target (default: all)")
+	buildCmd.Flags().Bool("rebuild", false, "Rebuild Docker images even if they exist")
+	cmd.AddCommand(buildCmd)
 
-	// Add run subcommand - builds a specific target (required)
+	// Add run subcommand - builds and runs a specific target
 	runCmd := &cobra.Command{
 		Use:   "run",
-		Short: "Build a specific target using Docker",
-		Long:  "Build a specific target using Docker. Requires --target flag.",
+		Short: "Build and run a specific target using Docker",
+		Long:  "Build and run a specific target using Docker. Requires --target flag.",
 		RunE:  runCIRun,
 	}
-	runCmd.Flags().String("target", "", "Target to build (required)")
+	runCmd.Flags().String("target", "", "Target to build and run (required)")
 	runCmd.Flags().Bool("rebuild", false, "Rebuild Docker image even if it exists")
 	runCmd.MarkFlagRequired("target")
 	cmd.AddCommand(runCmd)
@@ -57,16 +64,17 @@ func CICmd() *cobra.Command {
 	return cmd
 }
 
-func runCI(cmd *cobra.Command, _ []string) error {
+func runCIBuildCmd(cmd *cobra.Command, _ []string) error {
 	target, _ := cmd.Flags().GetString("target")
 	rebuild, _ := cmd.Flags().GetBool("rebuild")
-	return runCICommand(target, rebuild)
+	return runCIBuild(target, rebuild, false)
 }
 
 func runCIRun(cmd *cobra.Command, _ []string) error {
 	target, _ := cmd.Flags().GetString("target")
 	rebuild, _ := cmd.Flags().GetBool("rebuild")
-	return runCICommand(target, rebuild)
+	// Build and then run the executable
+	return runCIBuild(target, rebuild, true)
 }
 
 // runAddTarget scans available Dockerfiles and adds selected targets to cpx.ci
@@ -310,9 +318,7 @@ func describePlatform(name string) string {
 	arch := parts[1]
 
 	osNames := map[string]string{
-		"linux":   "Linux",
-		"windows": "Windows",
-		"macos":   "macOS",
+		"linux": "Linux",
 	}
 	archNames := map[string]string{
 		"amd64": "x86_64",
@@ -344,32 +350,17 @@ func deriveTargetConfig(name string) config.CITarget {
 		Image:      "cpx-" + name,
 	}
 
-	// Derive triplet and platform from name
+	// Derive platform from name
 	parts := strings.Split(name, "-")
 	if len(parts) >= 2 {
-		os := parts[0]   // linux, windows, macos
+		os := parts[0]   // linux
 		arch := parts[1] // amd64, arm64
 
 		switch os {
 		case "linux":
 			if arch == "amd64" {
-				target.Triplet = "x64-linux"
 				target.Platform = "linux/amd64"
 			} else if arch == "arm64" {
-				target.Triplet = "arm64-linux"
-				target.Platform = "linux/arm64"
-			}
-		case "windows":
-			if arch == "amd64" {
-				target.Triplet = "x64-mingw-static"
-				target.Platform = "linux/amd64" // Cross-compile from Linux
-			}
-		case "macos":
-			if arch == "amd64" {
-				target.Triplet = "x64-osx"
-				target.Platform = "linux/amd64" // Requires osxcross
-			} else if arch == "arm64" {
-				target.Triplet = "arm64-osx"
 				target.Platform = "linux/arm64"
 			}
 		}
@@ -380,7 +371,7 @@ func deriveTargetConfig(name string) config.CITarget {
 
 var ciCommandExecuted = false
 
-func runCICommand(targetName string, rebuild bool) error {
+func runCIBuild(targetName string, rebuild bool, executeAfterBuild bool) error {
 	if ciCommandExecuted {
 		fmt.Printf("%s[DEBUG] CI command already executed in this process (PID: %d), skipping second invocation.%s\n", Yellow, os.Getpid(), Reset)
 		return nil
@@ -449,9 +440,26 @@ func runCICommand(targetName string, rebuild bool) error {
 		return fmt.Errorf("failed to get project root: %w", err)
 	}
 
+	// Pre-create cache directories for all targets before Docker operations
+	// Docker requires mount source directories to exist on the host
+	cacheBaseDir := filepath.Join(projectRoot, ".cache", "ci")
+	if err := os.MkdirAll(cacheBaseDir, 0755); err != nil {
+		return fmt.Errorf("failed to create cache directory: %w", err)
+	}
+	for _, target := range targets {
+		targetCacheDir := filepath.Join(cacheBaseDir, target.Name, ".vcpkg_cache")
+		if err := os.MkdirAll(targetCacheDir, 0755); err != nil {
+			return fmt.Errorf("failed to create target cache directory: %w", err)
+		}
+	}
+
 	// Build and run for each target
 	for i, target := range targets {
-		fmt.Printf("\n%s[%d/%d] Building target: %s%s\n", Cyan, i+1, len(targets), target.Name, Reset)
+		if executeAfterBuild {
+			fmt.Printf("\n%s[%d/%d] Building and running target: %s%s\n", Cyan, i+1, len(targets), target.Name, Reset)
+		} else {
+			fmt.Printf("\n%s[%d/%d] Building target: %s%s\n", Cyan, i+1, len(targets), target.Name, Reset)
+		}
 
 		// Build Docker image
 		dockerfilePath := filepath.Join(absDockerfilesDir, target.Dockerfile)
@@ -464,15 +472,21 @@ func runCICommand(targetName string, rebuild bool) error {
 		}
 
 		// Run build in Docker container
-		if err := runDockerBuild(target, projectRoot, outputDir, ciConfig.Build); err != nil {
+		if err := runDockerBuild(target, projectRoot, outputDir, ciConfig.Build, executeAfterBuild); err != nil {
 			return fmt.Errorf("failed to build target %s: %w", target.Name, err)
 		}
 
-		fmt.Printf("%s Target %s built successfully%s\n", Green, target.Name, Reset)
+		if executeAfterBuild {
+			fmt.Printf("%s Target %s completed%s\n", Green, target.Name, Reset)
+		} else {
+			fmt.Printf("%s Target %s built successfully%s\n", Green, target.Name, Reset)
+		}
 	}
 
-	fmt.Printf("\n%s All targets built successfully!%s\n", Green, Reset)
-	fmt.Printf("   Artifacts are in: %s\n", outputDir)
+	if !executeAfterBuild {
+		fmt.Printf("\n%s All targets built successfully!%s\n", Green, Reset)
+		fmt.Printf("   Artifacts are in: %s\n", outputDir)
+	}
 	return nil
 }
 
@@ -612,7 +626,7 @@ func detectProjectType(projectRoot string) (bool, error) {
 	return true, nil
 }
 
-func runDockerBuild(target config.CITarget, projectRoot, outputDir string, buildConfig config.CIBuild) error {
+func runDockerBuild(target config.CITarget, projectRoot, outputDir string, buildConfig config.CIBuild, executeAfterBuild bool) error {
 	// Create target-specific output directory
 	targetOutputDir := filepath.Join(outputDir, target.Name)
 	if err := os.MkdirAll(targetOutputDir, 0755); err != nil {
@@ -823,7 +837,45 @@ echo " Copying artifacts..."
 mkdir -p /output/%s
 %s
 echo " Build complete!"
-`, vcpkgInstalledPath, vcpkgDownloadsPath, vcpkgBuildtreesPath, binaryCachePath, binaryCachePath, containerBuildDir, containerBuildDir, strings.Join(cmakeArgs, " "), strings.Join(buildArgs, " "), target.Name, copyCommand)
+%s
+`, vcpkgInstalledPath, vcpkgDownloadsPath, vcpkgBuildtreesPath, binaryCachePath, binaryCachePath, containerBuildDir, containerBuildDir, strings.Join(cmakeArgs, " "), strings.Join(buildArgs, " "), target.Name, copyCommand, func() string {
+		if executeAfterBuild {
+			projectName := filepath.Base(projectRoot)
+			return fmt.Sprintf(`
+echo ""
+echo " Running %s..."
+# Try to find the main executable - check common locations
+EXEC_PATH=""
+# First, check if there's an executable with the project name in the output directory
+if [ -x "/output/%s/%s" ]; then
+    EXEC_PATH="/output/%s/%s"
+# Check build directory root
+elif [ -x "%s/%s" ]; then
+    EXEC_PATH="%s/%s"
+else
+    # Search for any ELF executable (excluding tests, benchmarks, and libraries)
+    for f in $(find %s -maxdepth 3 -type f -executable ! -name "*_test*" ! -name "*_bench*" ! -name "*.a" ! -name "*.so" ! -name "a.out" ! -path "*/CMakeFiles/*" 2>/dev/null | head -5); do
+        if file "$f" 2>/dev/null | grep -qE "ELF.*(executable|pie)"; then
+            EXEC_PATH="$f"
+            break
+        fi
+    done
+fi
+if [ -n "$EXEC_PATH" ] && [ -x "$EXEC_PATH" ]; then
+    echo " Executing: $EXEC_PATH"
+    echo "----------------------------------------"
+    "$EXEC_PATH"
+    EXIT_CODE=$?
+    echo "----------------------------------------"
+    echo " Process exited with code: $EXIT_CODE"
+else
+    echo " No executable found to run"
+    echo " Searched for: %s in /output/%s and %s"
+fi
+`, projectName, target.Name, projectName, target.Name, projectName, containerBuildDir, projectName, containerBuildDir, projectName, containerBuildDir, projectName, target.Name, containerBuildDir)
+		}
+		return ""
+	}())
 
 	// Run Docker container
 	fmt.Printf("  %s Running build in Docker container...%s\n", Cyan, Reset)
