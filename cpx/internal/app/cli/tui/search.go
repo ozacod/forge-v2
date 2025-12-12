@@ -2,8 +2,11 @@ package tui
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -42,6 +45,7 @@ type SearchModel struct {
 	err             error
 	quitting        bool
 	vcpkgPath       string
+	vcpkgRoot       string // VCPKG_ROOT directory (parent of vcpkg executable)
 	addedPackages   []string
 	failedPackages  map[string]string // package -> error message
 	runVcpkgCommand func([]string) error
@@ -91,6 +95,7 @@ func NewSearchModel(initialQuery string, vcpkgPath string, runVcpkgCommand func(
 		selected:        make(map[int]bool),
 		failedPackages:  make(map[string]string),
 		vcpkgPath:       vcpkgPath,
+		vcpkgRoot:       filepath.Dir(vcpkgPath), // vcpkg exe is in VCPKG_ROOT
 		runVcpkgCommand: runVcpkgCommand,
 		viewportSize:    15,
 		addOutput:       []string{},
@@ -113,63 +118,96 @@ func (m SearchModel) Init() tea.Cmd {
 	return tea.Batch(textinput.Blink, m.spinner.Tick)
 }
 
-func (m SearchModel) doSearch() tea.Cmd {
-	return func() tea.Msg {
-		cmd := exec.Command(m.vcpkgPath, "search", m.query)
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &out
+// portManifest represents the vcpkg.json file structure
+type portManifest struct {
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	VersionSem  string `json:"version-semver"`
+	VersionDate string `json:"version-date"`
+	VersionStr  string `json:"version-string"`
+	Description any    `json:"description"` // Can be string or []string
+}
 
-		if err := cmd.Run(); err != nil {
-			return SearchResultsMsg{Err: err}
+func (p portManifest) getVersion() string {
+	if p.Version != "" {
+		return p.Version
+	}
+	if p.VersionSem != "" {
+		return p.VersionSem
+	}
+	if p.VersionDate != "" {
+		return p.VersionDate
+	}
+	return p.VersionStr
+}
+
+func (p portManifest) getDescription() string {
+	switch v := p.Description.(type) {
+	case string:
+		return v
+	case []interface{}:
+		var parts []string
+		for _, s := range v {
+			if str, ok := s.(string); ok {
+				parts = append(parts, str)
+			}
 		}
-
-		results := parseVcpkgSearchOutput(out.String())
-		return SearchResultsMsg{Results: results}
+		return strings.Join(parts, " ")
+	default:
+		return ""
 	}
 }
 
-func parseVcpkgSearchOutput(output string) []SearchResult {
-	var results []SearchResult
-	lines := strings.Split(output, "\n")
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" ||
-			strings.HasPrefix(line, "The result may be outdated") ||
-			strings.HasPrefix(line, "If your library is not listed") ||
-			strings.HasPrefix(line, "If your port is not listed") ||
-			strings.HasPrefix(line, "warning:") ||
-			strings.HasPrefix(line, "Use '--debug'") ||
-			strings.HasPrefix(line, "Errors occurred while parsing") {
-			continue
+func (m SearchModel) doSearch() tea.Cmd {
+	return func() tea.Msg {
+		portsDir := filepath.Join(m.vcpkgRoot, "ports")
+		entries, err := os.ReadDir(portsDir)
+		if err != nil {
+			return SearchResultsMsg{Err: fmt.Errorf("failed to read ports directory: %w", err)}
 		}
 
-		// Parse format: "package-name     description here"
-		// or "package-name[feature]   description"
-		parts := strings.Fields(line)
-		if len(parts) < 1 {
-			continue
+		queryLower := strings.ToLower(m.query)
+		var results []SearchResult
+
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				continue
+			}
+
+			name := entry.Name()
+			// Skip vcpkg internal packages
+			if strings.HasPrefix(name, "vcpkg-") {
+				continue
+			}
+
+			// Quick name match first (before reading JSON)
+			if !strings.Contains(strings.ToLower(name), queryLower) {
+				continue
+			}
+
+			// Read vcpkg.json for this port
+			manifestPath := filepath.Join(portsDir, name, "vcpkg.json")
+			data, err := os.ReadFile(manifestPath)
+			if err != nil {
+				// Skip ports without vcpkg.json
+				continue
+			}
+
+			var manifest portManifest
+			if err := json.Unmarshal(data, &manifest); err != nil {
+				// Skip invalid manifests
+				continue
+			}
+
+			results = append(results, SearchResult{
+				Name:        manifest.Name,
+				Version:     manifest.getVersion(),
+				Description: manifest.getDescription(),
+			})
 		}
 
-		name := parts[0]
-		// Skip vcpkg metadata lines
-		if strings.HasPrefix(name, "vcpkg-") {
-			continue
-		}
-
-		description := ""
-		if len(parts) > 1 {
-			description = strings.Join(parts[1:], " ")
-		}
-
-		results = append(results, SearchResult{
-			Name:        name,
-			Description: description,
-		})
+		return SearchResultsMsg{Results: results}
 	}
-
-	return results
 }
 
 func (m SearchModel) doAddPackage(pkg string) tea.Cmd {

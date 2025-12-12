@@ -19,6 +19,7 @@ const (
 	Yellow = "\033[33m"
 	Cyan   = "\033[36m"
 	Bold   = "\033[1m"
+	Dim    = "\033[2m"
 )
 
 // Icon constants for consistent output

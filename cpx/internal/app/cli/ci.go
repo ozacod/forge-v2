@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ozacod/cpx/internal/app/cli/tui"
 	"github.com/ozacod/cpx/pkg/config"
 	"github.com/spf13/cobra"
 )
@@ -36,11 +37,20 @@ func CICmd() *cobra.Command {
 
 	// Add add-target subcommand
 	addTargetCmd := &cobra.Command{
-		Use:   "add-target",
+		Use:   "add-target [target...]",
 		Short: "Add a build target to cpx.ci",
 		Long:  "Scan available Dockerfiles and add a build target to cpx.ci configuration.",
 		RunE:  runAddTarget,
 	}
+
+	// Add list subcommand to add-target
+	listTargetsCmd := &cobra.Command{
+		Use:   "list",
+		Short: "List all available build targets and select interactively",
+		Long:  "List all available Dockerfiles and let you choose which to add to cpx.ci.",
+		RunE:  runListTargets,
+	}
+	addTargetCmd.AddCommand(listTargetsCmd)
 	cmd.AddCommand(addTargetCmd)
 
 	return cmd
@@ -217,6 +227,135 @@ func runAddTarget(_ *cobra.Command, args []string) error {
 
 	fmt.Printf("\n%sSaved cpx.ci with %d target(s)%s\n", Green, len(ciConfig.Targets), Reset)
 	return nil
+}
+
+// runListTargets shows all available targets and lets user select interactively
+func runListTargets(_ *cobra.Command, _ []string) error {
+	// Get dockerfiles directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+	dockerfilesDir := filepath.Join(homeDir, ".config", "cpx", "dockerfiles")
+
+	// Check if directory exists
+	if _, err := os.Stat(dockerfilesDir); os.IsNotExist(err) {
+		return fmt.Errorf("dockerfiles directory not found: %s\n  Run 'cpx upgrade' to download Dockerfiles", dockerfilesDir)
+	}
+
+	// Scan for Dockerfile.* files
+	entries, err := os.ReadDir(dockerfilesDir)
+	if err != nil {
+		return fmt.Errorf("failed to read dockerfiles directory: %w", err)
+	}
+
+	var availableTargets []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if strings.HasPrefix(name, "Dockerfile.") && !strings.HasSuffix(name, ".example") {
+			targetName := strings.TrimPrefix(name, "Dockerfile.")
+			availableTargets = append(availableTargets, targetName)
+		}
+	}
+
+	if len(availableTargets) == 0 {
+		return fmt.Errorf("no Dockerfiles found in %s", dockerfilesDir)
+	}
+
+	// Load existing cpx.ci to check which targets are already added
+	ciConfig, err := config.LoadCI("cpx.ci")
+	if err != nil {
+		// Create new config
+		ciConfig = &config.CIConfig{
+			Targets: []config.CITarget{},
+			Build: config.CIBuild{
+				Type:         "Release",
+				Optimization: "2",
+				Jobs:         0,
+			},
+			Output: ".bin/ci",
+		}
+	}
+
+	existingTargets := make(map[string]bool)
+	for _, t := range ciConfig.Targets {
+		existingTargets[t.Name] = true
+	}
+
+	// Build targets list for TUI
+	var targets []tui.Target
+	for _, name := range availableTargets {
+		targets = append(targets, tui.Target{
+			Name:        name,
+			Platform:    describePlatform(name),
+			AlreadyUsed: existingTargets[name],
+		})
+	}
+
+	// Run interactive TUI
+	selectedTargets, err := tui.RunTargetSelection(targets)
+	if err != nil {
+		return fmt.Errorf("TUI error: %w", err)
+	}
+
+	if len(selectedTargets) == 0 {
+		fmt.Printf("%sNo targets selected%s\n", Yellow, Reset)
+		return nil
+	}
+
+	// Add selected targets
+	for _, targetName := range selectedTargets {
+		target := deriveTargetConfig(targetName)
+		ciConfig.Targets = append(ciConfig.Targets, target)
+		fmt.Printf("%s+ Added target: %s%s\n", Green, targetName, Reset)
+	}
+
+	// Save cpx.ci
+	if err := config.SaveCI(ciConfig, "cpx.ci"); err != nil {
+		return err
+	}
+
+	fmt.Printf("\n%sSaved cpx.ci with %d target(s)%s\n", Green, len(ciConfig.Targets), Reset)
+	return nil
+}
+
+// describePlatform returns a human-readable platform description
+func describePlatform(name string) string {
+	parts := strings.Split(name, "-")
+	if len(parts) < 2 {
+		return ""
+	}
+	os := parts[0]
+	arch := parts[1]
+
+	osNames := map[string]string{
+		"linux":   "Linux",
+		"windows": "Windows",
+		"macos":   "macOS",
+	}
+	archNames := map[string]string{
+		"amd64": "x86_64",
+		"arm64": "ARM64",
+	}
+
+	osName := osNames[os]
+	if osName == "" {
+		osName = os
+	}
+	archName := archNames[arch]
+	if archName == "" {
+		archName = arch
+	}
+
+	return osName + " " + archName
+}
+
+// dimStyle applies dim styling to text
+func dimStyle(s string) string {
+	return Dim + s + Reset
 }
 
 // deriveTargetConfig derives a CITarget from a target name

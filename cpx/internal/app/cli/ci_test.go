@@ -137,3 +137,61 @@ func TestSaveCIConfig(t *testing.T) {
 	assert.Equal(t, "Release", loadedConfig.Build.Type)
 	assert.Equal(t, ".bin/ci", loadedConfig.Output)
 }
+
+func TestRunAddTargetWithArgs(t *testing.T) {
+	// Setup: create temp dir with mock dockerfiles
+	tmpDir := t.TempDir()
+	dockerfilesDir := filepath.Join(tmpDir, ".config", "cpx", "dockerfiles")
+	require.NoError(t, os.MkdirAll(dockerfilesDir, 0755))
+
+	// Create mock Dockerfiles
+	require.NoError(t, os.WriteFile(filepath.Join(dockerfilesDir, "Dockerfile.linux-arm64"), []byte("FROM ubuntu"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(dockerfilesDir, "Dockerfile.linux-amd64"), []byte("FROM ubuntu"), 0644))
+
+	// Change HOME to temp dir for test
+	oldHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", oldHome)
+
+	// Change to temp dir for cpx.ci output
+	projectDir := filepath.Join(tmpDir, "project")
+	require.NoError(t, os.MkdirAll(projectDir, 0755))
+	oldWd, _ := os.Getwd()
+	os.Chdir(projectDir)
+	defer os.Chdir(oldWd)
+
+	// Test: add linux-arm64 target via args
+	err := runAddTarget(nil, []string{"linux-arm64"})
+	require.NoError(t, err)
+
+	// Verify cpx.ci was created with correct target
+	ciConfig, err := config.LoadCI("cpx.ci")
+	require.NoError(t, err)
+	require.Len(t, ciConfig.Targets, 1)
+	assert.Equal(t, "linux-arm64", ciConfig.Targets[0].Name)
+	assert.Equal(t, "arm64-linux", ciConfig.Targets[0].Triplet)
+	assert.Equal(t, "linux/arm64", ciConfig.Targets[0].Platform)
+
+	// Test: add another target
+	err = runAddTarget(nil, []string{"linux-amd64"})
+	require.NoError(t, err)
+
+	// Verify both targets exist
+	ciConfig, err = config.LoadCI("cpx.ci")
+	require.NoError(t, err)
+	require.Len(t, ciConfig.Targets, 2)
+
+	// Test: adding duplicate should skip
+	err = runAddTarget(nil, []string{"linux-arm64"})
+	require.NoError(t, err)
+
+	// Should still have 2 targets (not 3)
+	ciConfig, err = config.LoadCI("cpx.ci")
+	require.NoError(t, err)
+	assert.Len(t, ciConfig.Targets, 2)
+
+	// Test: invalid target should error
+	err = runAddTarget(nil, []string{"invalid-target"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown target")
+}
