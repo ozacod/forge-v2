@@ -78,23 +78,9 @@ func RunProject(release bool, target string, execArgs []string, verbose bool, op
 	buildType, cxxFlags := DetermineBuildType(release, optLevel)
 
 	// Add sanitizer flags
-	linkerFlags := ""
-	if sanitizer != "" {
-		switch sanitizer {
-		case "asan":
-			cxxFlags += " -fsanitize=address -fno-omit-frame-pointer"
-			linkerFlags = "-fsanitize=address"
-		case "tsan":
-			cxxFlags += " -fsanitize=thread"
-			linkerFlags = "-fsanitize=thread"
-		case "msan":
-			cxxFlags += " -fsanitize=memory -fno-omit-frame-pointer"
-			linkerFlags = "-fsanitize=memory"
-		case "ubsan":
-			cxxFlags += " -fsanitize=undefined"
-			linkerFlags = "-fsanitize=undefined"
-		}
-	}
+	sanCFlags, sanLFlags := GetSanitizerFlags(sanitizer)
+	cxxFlags += sanCFlags
+	linkerFlags := sanLFlags
 
 	optLabel := "default (-O0)"
 	if release {

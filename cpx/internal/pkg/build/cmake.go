@@ -65,6 +65,27 @@ func DetermineBuildType(release bool, optLevel string) (string, string) {
 	return buildType, cxxFlags
 }
 
+// GetSanitizerFlags returns the CXX flags and linker flags for the given sanitizer
+func GetSanitizerFlags(sanitizer string) (string, string) {
+	cxxFlags := ""
+	linkerFlags := ""
+	switch sanitizer {
+	case "asan":
+		cxxFlags = " -fsanitize=address -fno-omit-frame-pointer"
+		linkerFlags = "-fsanitize=address"
+	case "tsan":
+		cxxFlags = " -fsanitize=thread"
+		linkerFlags = "-fsanitize=thread"
+	case "msan":
+		cxxFlags = " -fsanitize=memory -fno-omit-frame-pointer"
+		linkerFlags = "-fsanitize=memory"
+	case "ubsan":
+		cxxFlags = " -fsanitize=undefined"
+		linkerFlags = "-fsanitize=undefined"
+	}
+	return cxxFlags, linkerFlags
+}
+
 // BuildProject builds the project using CMake
 func BuildProject(release bool, jobs int, target string, clean bool, optLevel string, verbose bool, sanitizer string, vcpkgClient *vcpkg.Client) error {
 	// Set VCPKG_ROOT from cpx config if not already set
@@ -113,23 +134,10 @@ func BuildProject(release bool, jobs int, target string, clean bool, optLevel st
 	buildType, cxxFlags := DetermineBuildType(release, optLevel)
 
 	// Add sanitizer flags
-	linkerFlags := ""
-	if sanitizer != "" {
-		switch sanitizer {
-		case "asan":
-			cxxFlags += " -fsanitize=address -fno-omit-frame-pointer"
-			linkerFlags = "-fsanitize=address"
-		case "tsan":
-			cxxFlags += " -fsanitize=thread"
-			linkerFlags = "-fsanitize=thread"
-		case "msan":
-			cxxFlags += " -fsanitize=memory -fno-omit-frame-pointer"
-			linkerFlags = "-fsanitize=memory"
-		case "ubsan":
-			cxxFlags += " -fsanitize=undefined"
-			linkerFlags = "-fsanitize=undefined"
-		}
-	}
+	// Add sanitizer flags
+	sanCFlags, sanLFlags := GetSanitizerFlags(sanitizer)
+	cxxFlags += sanCFlags
+	linkerFlags := sanLFlags
 
 	optLabel := "default (-O0)"
 	if release {

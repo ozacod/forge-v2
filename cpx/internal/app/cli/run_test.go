@@ -34,6 +34,7 @@ func TestRunBazelRun(t *testing.T) {
 		target     string
 		args       []string
 		verbose    bool
+		sanitizer  string
 		wantConfig string
 	}{
 		{
@@ -60,12 +61,21 @@ func TestRunBazelRun(t *testing.T) {
 			verbose:    false,
 			wantConfig: "--config=debug",
 		},
+		{
+			name:       "ASan run",
+			release:    false,
+			target:     "app",
+			args:       nil,
+			verbose:    false,
+			sanitizer:  "asan",
+			wantConfig: "--config=debug",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			capturedArgs = nil
-			err := runBazelRun(tt.release, tt.target, tt.args, tt.verbose, "", "")
+			err := runBazelRun(tt.release, tt.target, tt.args, tt.verbose, "", tt.sanitizer)
 			assert.NoError(t, err)
 
 			require.GreaterOrEqual(t, len(capturedArgs), 1)
@@ -73,6 +83,10 @@ func TestRunBazelRun(t *testing.T) {
 			assert.Equal(t, "bazel", capturedArgs[0][0])
 			assert.Equal(t, "run", capturedArgs[0][1])
 			assert.Contains(t, capturedArgs[0], tt.wantConfig)
+
+			if tt.sanitizer == "asan" {
+				assert.Contains(t, capturedArgs[0], "--copt=-fsanitize=address")
+			}
 		})
 	}
 }

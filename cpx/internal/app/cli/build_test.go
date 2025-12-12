@@ -40,6 +40,7 @@ func TestRunBazelBuild(t *testing.T) {
 		target     string
 		clean      bool
 		verbose    bool
+		sanitizer  string
 		wantConfig string
 	}{
 		{
@@ -82,12 +83,21 @@ func TestRunBazelBuild(t *testing.T) {
 			verbose:    true,
 			wantConfig: "--config=debug",
 		},
+		{
+			name:       "ASan build",
+			release:    false,
+			target:     "",
+			clean:      false,
+			verbose:    false,
+			sanitizer:  "asan",
+			wantConfig: "--config=debug",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			capturedArgs = nil
-			err := runBazelBuild(tt.release, tt.target, tt.clean, tt.verbose, "", "")
+			err := runBazelBuild(tt.release, tt.target, tt.clean, tt.verbose, "", tt.sanitizer)
 			assert.NoError(t, err)
 
 			// Check that bazel build was called
@@ -105,6 +115,10 @@ func TestRunBazelBuild(t *testing.T) {
 					} else {
 						// When not verbose, --noshow_progress should be added
 						assert.Contains(t, args, "--noshow_progress")
+					}
+					if tt.sanitizer == "asan" {
+						assert.Contains(t, args, "--copt=-fsanitize=address")
+						assert.Contains(t, args, "--linkopt=-fsanitize=address")
 					}
 					break
 				}
